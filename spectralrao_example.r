@@ -15,13 +15,15 @@ r2 <- cbind(rbind(xy1, xy2),rbind(xy3,xy4))
 #User simulated spectral matrix
 r3<-matrix(data=c(-0.5,-0.5,-0.5,-0.5,0.8,-0.5,-0.5,-0.5,-0.5,
     0.8,0,0,0,0,0,0,0,0.8,0.8,0.8,0,0.5,0.8,0.8,0.5),nrow=5,ncol=5)
+r4=r3*0.3
+r5=r3*0.4
 
 #True rasterm data
 ndvi<-raster("Desktop/rao/ndvi_rao")
 ndwi<-raster("Desktop/rao/ndwi_rao")
 
 #Run the function
-raomatrix<-spectralrao(r3,"euclidean",window=3)
+raomatrix<-spectralrao(matrix=r3,distance_m="euclidean",window=3,shannon=TRUE)
 
 #Comparison
 par(mfrow=c(1,3))
@@ -31,3 +33,6 @@ plot(raster(raomatrix[[2]]),main="Shannon's Index")
 
 #Raos vs Shannon
 plot(raomatrix[[1]]~raomatrix[[2]],pch=16,col="grey",cex=2,xlab="ShannonD",ylab="RaoQ")
+
+#Run the function as multidimensional RaoQ
+raomatrix<-spectralrao(matrix=list(r3,r4,r5),window=3,mode="multidimension",shannon=FALSE)
