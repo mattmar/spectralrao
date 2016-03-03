@@ -1,5 +1,5 @@
 # spectralrao(...)
- Description: Applying Rao's index to remote sensing data 
+ Description: Applying Rao's index to remote sensing data
 
 ##Example:
 ###Random simulated spectral matrix
@@ -34,3 +34,9 @@ plot(raomatrix[[1]]~raomatrix[[2]],pch=16,col="grey",cex=2,xlab="ShannonD",ylab=
 
 ###Run the function as multidimensional RaoQ
 raomatrix<-spectralrao(matrix=list(r3,r4,r5),window=3,mode="multidimension",shannon=FALSE)
+
+###Run the function as multidimensional RaoQ and RasterLayer as input
+raomatrix<-spectralrao(matrix=list(ndvi,ndvi+7),window=3,mode="multidimension",shannon=FALSE)
+
+###Plot the output
+raster::plot(raster(raomatrix[[1]]))
