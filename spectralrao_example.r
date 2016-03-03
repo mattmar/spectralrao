@@ -19,8 +19,7 @@ r4=r3*0.3
 r5=r3*0.4
 
 #True rasterm data
-ndvi<-raster("Desktop/rao/ndvi_rao")
-ndwi<-raster("Desktop/rao/ndwi_rao")
+ndvi<-raster("~/Desktop/PhD/topics/spectralrao/ndvi_rao")
 
 #Run the function
 raomatrix<-spectralrao(matrix=r3,distance_m="euclidean",window=3,shannon=TRUE)
@@ -36,3 +35,9 @@ plot(raomatrix[[1]]~raomatrix[[2]],pch=16,col="grey",cex=2,xlab="ShannonD",ylab=
 
 #Run the function as multidimensional RaoQ
 raomatrix<-spectralrao(matrix=list(r3,r4,r5),window=3,mode="multidimension",shannon=FALSE)
+
+#Run the function as multidimensional RaoQ
+raomatrix<-spectralrao(matrix=list(ndvi,ndvi+7),window=3,mode="multidimension",shannon=FALSE)
+
+
+raster::plot(raster(raomatrix[[1]]))

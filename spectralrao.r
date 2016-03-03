@@ -44,7 +44,7 @@ spectralrao<-function(matrix,distance_m="euclidean",window=3,mode="classic",shan
     }
 }
 
-#Calculate operational moving window
+#Derive operational moving window
 oddn<-seq(1,window,2)
 oddn_pos<-which(oddn == 3)
 w=window-oddn_pos
@@ -59,7 +59,6 @@ if(mode=="classic"){
 #Reshape values
     values<-as.numeric(as.factor(rasterm))
     rasterm_1<-matrix(data=values,nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
-
 #Add fake columns and rows for moving window
     hor<-matrix(NA,ncol=dim(rasterm)[2],nrow=w)
     ver<-matrix(NA,ncol=w,nrow=dim(rasterm)[1]+w*2)
@@ -91,6 +90,17 @@ if(mode=="classic"){
 #
 #If multimensional RaoQ
 #
+#Check if there are NAs in the matrices
+
+    if ( is(rasterm,"RasterLayer") ){
+        if(any(sapply(lapply(matrix, function(x) {as.matrix(x)}), is.na)==TRUE))
+            message("\n Warning: One or more RasterLayers contain NA which will be threated as 0")
+    } else if ( is(rasterm,"matrix") ){
+        if(any(sapply(matrix, is.na)==TRUE) ) {
+            message("\n Warning: One or more matrices contain NA which will be threated as 0")
+        }
+    }
+
 #Reshape values
     vls<-lapply(matrix, function(x) {as.matrix(x)})
 #Add fake columns and rows for moving w
@@ -98,17 +108,26 @@ if(mode=="classic"){
     ver<-matrix(NA,ncol=w,nrow=dim(vls[[1]])[1]+w*2)
     trastersm<-lapply(vls, function(x) {cbind(ver,rbind(hor,x,hor),ver)})
 
-# Function to extract the center value of a matrix
-    ctpoint<-function(x,...){x[round(dim(x)[1]/2),round(dim(x)[2]/2)]
-}
-
 # Loop over all the pixels in the matrices
-for (cl in (1+w):(dim(vls[[1]])[2]+w)) {
-    for(rw in (1+w):(dim(vls[[1]])[1]+w)) {
-        tw<-lapply(trastersm, function(x) {x[(rw-w):(rw+w),(cl-w):(cl+w)]})
-        raoqe[rw-w,cl-w] <- sapply(Reduce('+',sum(do.call(cbind,lapply(tw, function(x) {(x-ctpoint(x))^2 })),na.rm=TRUE)), function(y) {y*(1/(window)^2)})
+    if( (ncol(vls[[1]])*nrow(vls[[1]]))> 10000) {
+        message("\n Warning: ",ncol(vls[[1]])*nrow(vls[[1]])*length(vls), " cells to be processed, may take some time... \n")
     }
-} # end multimensional RaoQ
+
+    for (cl in (1+w):(dim(vls[[1]])[2]+w)) {
+        for(rw in (1+w):(dim(vls[[1]])[1]+w)) {
+            tw<-lapply(trastersm, function(x) { x[(rw-w):(rw+w),(cl-w):(cl+w)]
+        })
+            distances<-lapply(tw, function(x) {
+                out<-matrix(NA,nrow=length(x),ncol=length(x))
+                for (i in 1:length(x)) {
+                    out[,i] <- as.vector((x[i] - x)^2)
+                    out[out %in% NA]<- 0
+                }
+                return(out)
+            } )
+            raoqe[rw-w,cl-w] <- sum(sqrt(Reduce('+',distances)) *(1/(window)^4))
+        } # end multimensional RaoQ
+    }
 }
 #
 #ShannonD
