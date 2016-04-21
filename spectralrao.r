@@ -13,6 +13,9 @@
 #Function
 spectralrao<-function(matrix,distance_m="euclidean",window=3,mode="classic",shannon=TRUE) {
 
+#Load required packages
+    require(raster)
+
 #Change input matrix/ces names
     if( is(matrix,"matrix") | is(matrix,"RasterLayer") | is(matrix,"SpatialGridDataFrame") ) {
         if( is(matrix,"SpatialGridDataFrame") ) {
@@ -23,27 +26,24 @@ spectralrao<-function(matrix,distance_m="euclidean",window=3,mode="classic",shan
         rasterm<-matrix[[1]]
     }
 
-#Load required packages
-    require(raster)
-
 #Deal with matrix and RasterLayer in a different way
     if( is(matrix[[1]],"RasterLayer") ) {
         if(mode=="classic"){
             rasterm<-round(as.matrix(rasterm),2)
-            message("RasterLayer ok: \n Rao and Shannon output matrices will be returned")
+            message("RasterLayer ok: \nRao and Shannon output matrices will be returned")
         }else if(mode=="multidimension" & shannon==FALSE){
-            message(("RasterLayer ok: \n A raster object with multimension RaoQ will be returned"))
+            message(("RasterLayer ok: \nA raster object with multimension RaoQ will be returned"))
         }else if(mode=="multidimension" & shannon==TRUE){
-            stop(("Matrix check failed: \n multidimension and Shannon not compatible, set shannon=FALSE"))
+            stop(("Matrix check failed: \nMultidimension and Shannon not compatible, set shannon=FALSE"))
         }
     }else if( is(matrix,"matrix") | is(matrix,"list") ) {
         if(mode=="classic"){
-            message("Matrix check ok: \n Rao and Shannon output matrices will be returned")
+            message("Matrix check ok: \nRao and Shannon output matrices will be returned")
         }else if(mode=="multidimension" & shannon==FALSE){
-            message(("Matrix check ok: \n A matrix with multimension RaoQ will be returned"))
+            message(("Matrix check ok: \nA matrix with multimension RaoQ will be returned"))
         }else if(mode=="multidimension" & shannon==TRUE){
-            stop("Matrix check failed: \n multidimension and Shannon not compatible, set shannon=FALSE")
-        }else{stop("Matrix check failed: \n Not a valid input, please provide a matrix, list or RasterLayer object")
+            stop("Matrix check failed: \nMultidimension and Shannon not compatible, set shannon=FALSE")
+        }else{stop("Matrix check failed: \nNot a valid input, please provide a matrix, list or RasterLayer object")
     }
 }
 
@@ -72,6 +72,7 @@ if(mode=="classic"){
 #Loop over each pixel
     for (cl in (1+w):(dim(rasterm)[2]+w)) {
         for(rw in (1+w):(dim(rasterm)[1]+w)) {
+            message("Working on coords ",rw-w ,",",cl-w)
             tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]),maxsum=10000)
             if("NA's" %in% names(tw)) {
                 tw<-tw[-length(tw)]
