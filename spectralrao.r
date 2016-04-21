@@ -14,7 +14,7 @@
 spectralrao<-function(matrix,distance_m="euclidean",window=3,mode="classic",shannon=TRUE) {
 
 #Change input matrix/ces names
-    if(is(matrix,"matrix") | is(matrix,"RasterLayer") ) {
+    if( is(matrix,"matrix") | is(matrix,"RasterLayer") | is(SpatialGridDataFrame,"SpatialGridDataFrame") ) {
         rasterm<-matrix
     } else if(is(matrix,"list")) {
         rasterm<-matrix[[1]]
