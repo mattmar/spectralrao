@@ -11,16 +11,18 @@
 #####################################################
 
 #Function
-spectralrao<-function(matrix,distance_m="euclidean",window=3,mode="classic",shannon=TRUE) {
+spectralrao<-function(matrix,distance_m="euclidean",window=10,mode="classic",shannon=TRUE,debugging=F) {
 
 #Load required packages
     require(raster)
 
+#Initial checks
+    if( !(is(matrix,"matrix") | is(matrix,"SpatialGridDataFrame") | is(matrix,"RasterLayer")) ) {stop("\nNot a valid input object.") }
 #Change input matrix/ces names
-    if( is(matrix,"matrix") | is(matrix,"RasterLayer") | is(matrix,"SpatialGridDataFrame") ) {
-        if( is(matrix,"SpatialGridDataFrame") ) {
-            matrix <- raster(matrix)
-        }
+    if( is(matrix,"SpatialGridDataFrame") ) {
+        matrix <- raster(matrix)
+    }
+    if( is(matrix,"matrix") | is(matrix,"RasterLayer")) {
         rasterm<-matrix
     } else if( is(matrix,"list") ) {
         rasterm<-matrix[[1]]
@@ -28,7 +30,7 @@ spectralrao<-function(matrix,distance_m="euclidean",window=3,mode="classic",shan
 
 #Deal with matrix and RasterLayer in a different way
     if( is(matrix[[1]],"RasterLayer") ) {
-        if(mode=="classic"){
+        if( mode=="classic" ){
             rasterm<-round(as.matrix(rasterm),2)
             message("RasterLayer ok: \nRao and Shannon output matrices will be returned")
         }else if(mode=="multidimension" & shannon==FALSE){
@@ -72,15 +74,17 @@ if(mode=="classic"){
 #Loop over each pixel
     for (cl in (1+w):(dim(rasterm)[2]+w)) {
         for(rw in (1+w):(dim(rasterm)[1]+w)) {
-            message("Working on coords ",rw-w ,",",cl-w)
+            if(debugging){message("Working on coords ",rw-w ,",",cl-w)}
             tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]),maxsum=10000)
             if("NA's" %in% names(tw)) {
                 tw<-tw[-length(tw)]
             }
-            tw_labels<-names(tw)
+            if( length(tw)<round((window^2)/2) ) {
+                raoqe[rw-w,cl-w]<-NA
+            }else{tw_labels<-names(tw)
             tw_values<-as.vector(tw)
             if(length(tw_values) == 1) {
-                raoqe[rw-w,cl-w]<-0
+                raoqe[rw-w,cl-w]<-NA
             }else{p<-tw_values/sum(tw_values)
             p1<-combn(p,m=2,FUN=prod)
             d2<-as.matrix(d1)
@@ -89,6 +93,7 @@ if(mode=="classic"){
             raoqe[rw-w,cl-w]<-sum(p1*d3[!(is.na(d3))])
         }
     }
+}
 } # End classic RaoQ
 } else if(mode=="multidimension"){
 #
@@ -150,10 +155,17 @@ if(shannon==TRUE){
     for (cl in (1+w):(dim(rasterm)[2]+w)) {
         for(rw in (1+w):(dim(rasterm)[1]+w)) {
             tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]))
-            tw_values<-as.vector(tw)
-            p<-tw_values/sum(tw_values)
-            p_log<-log(p)
-            shannond[rw-w,cl-w]<-(-(sum(p*p_log)))
+            if( "NA's"%in%names(tw) ) {
+                tw<-tw[-length(tw)]
+            }
+            if( length(tw)<round((window^2)/2) ) {
+                shannond[rw-w,cl-w]<-NA
+            } else {
+                tw_values<-as.vector(tw)
+                p<-tw_values/sum(tw_values)
+                p_log<-log(p)
+                shannond[rw-w,cl-w]<-(-(sum(p*p_log)))
+            }
         }
     } # End ShannonD
 }
