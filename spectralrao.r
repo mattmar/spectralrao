@@ -17,7 +17,7 @@ spectralrao<-function(matrix,distance_m="euclidean",window=10,mode="classic",sha
     require(raster)
 
 #Initial checks
-    if( !(is(matrix,"matrix") | is(matrix,"SpatialGridDataFrame") | is(matrix,"RasterLayer")) ) {stop("\nNot a valid input object.") }
+    if( !(is(matrix,"matrix") | is(matrix,"SpatialGridDataFrame") | is(matrix,"RasterLayer") | is(matrix,"list")) ) {stop("\nNot a valid input object.") }
 #Change input matrix/ces names
     if( is(matrix,"SpatialGridDataFrame") ) {
         matrix <- raster(matrix)

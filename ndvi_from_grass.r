@@ -1,8 +1,8 @@
 # Import NDVI from GRASS and calculate shannon/rao
 library(rgrass7)
-mm<-ndvi_2015_06_uk_5km
-ndvi_2015_06_2km<-readRAST(paste("mm"),sep="")
-raomatrix<-spectralrao(ndvi_2015_06_2km,distance_m="euclidean",window=10,shannon=TRUE)
+mm<-"ndvi_2015_06_uk_5km"
+ndvi_2015_06_uk_5km<-readRAST(paste(mm,sep=""))
+raomatrix<-spectralrao(get(mm),distance_m="euclidean",window=9,shannon=TRUE)
 
 a <- raster(raomatrix[[2]],template=raster(mm))
 b <- raster(raomatrix[[1]],template=raster(mm))
