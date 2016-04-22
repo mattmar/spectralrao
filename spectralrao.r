@@ -31,7 +31,7 @@ spectralrao<-function(matrix,distance_m="euclidean",window=10,mode="classic",sha
 #Deal with matrix and RasterLayer in a different way
     if( is(matrix[[1]],"RasterLayer") ) {
         if( mode=="classic" ){
-            rasterm<-round(as.matrix(rasterm),2)
+            rasterm<-round(as.matrix(rasterm),4)
             message("RasterLayer ok: \nRao and Shannon output matrices will be returned")
         }else if(mode=="multidimension" & shannon==FALSE){
             message(("RasterLayer ok: \nA raster object with multimension RaoQ will be returned"))
@@ -50,9 +50,9 @@ spectralrao<-function(matrix,distance_m="euclidean",window=10,mode="classic",sha
 }
 
 #Derive operational moving window
-oddn<-seq(1,window,2)
-oddn_pos<-which(oddn == 3)
-w=window-oddn_pos
+if( window%%2==1 ){
+    w <- (window-1)/2
+}else{stop("Moving window size must be odd")}
 
 #Output matrices preparation
 raoqe<-matrix(rep(NA,dim(rasterm)[1]*dim(rasterm)[2]),nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
@@ -74,26 +74,29 @@ if(mode=="classic"){
 #Loop over each pixel
     for (cl in (1+w):(dim(rasterm)[2]+w)) {
         for(rw in (1+w):(dim(rasterm)[1]+w)) {
-            if(debugging){message("Working on coords ",rw-w ,",",cl-w)}
-            tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]),maxsum=10000)
-            if("NA's" %in% names(tw)) {
-                tw<-tw[-length(tw)]
+            if( !length(which(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2 )  {
+                raoqe[rw-w,cl-w]<-NA
+            }else{
+                tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]),maxsum=10000)
+                if("NA's" %in% names(tw)) {
+                    tw<-tw[-length(tw)]
+                }
+                if(debugging){
+                    message("Working on coords ",rw-w ,",",cl-w,". mw length: ",length(tw),", window size=",window)
+                }
+                tw_labels<-names(tw)
+                tw_values<-as.vector(tw)
+                if(length(tw_values) == 1) {
+                    raoqe[rw-w,cl-w]<-NA
+                }else{p<-tw_values/sum(tw_values)
+                p1<-combn(p,m=2,FUN=prod)
+                d2<-as.matrix(d1)
+                d2[upper.tri(d1,diag=TRUE)]<-NA
+                d3<-d2[as.numeric(tw_labels),as.numeric(tw_labels)]
+                raoqe[rw-w,cl-w]<-sum(p1*d3[!(is.na(d3))])
             }
-            if( length(tw)<round((window^2)/2) ) {
-                raoqe[rw-w,cl-w]<-NA
-            }else{tw_labels<-names(tw)
-            tw_values<-as.vector(tw)
-            if(length(tw_values) == 1) {
-                raoqe[rw-w,cl-w]<-NA
-            }else{p<-tw_values/sum(tw_values)
-            p1<-combn(p,m=2,FUN=prod)
-            d2<-as.matrix(d1)
-            d2[upper.tri(d1,diag=TRUE)]<-NA
-            d3<-d2[as.numeric(tw_labels),as.numeric(tw_labels)]
-            raoqe[rw-w,cl-w]<-sum(p1*d3[!(is.na(d3))])
         }
     }
-}
 } # End classic RaoQ
 } else if(mode=="multidimension"){
 #
@@ -154,20 +157,19 @@ if(shannon==TRUE){
 #Loop over all the pixels
     for (cl in (1+w):(dim(rasterm)[2]+w)) {
         for(rw in (1+w):(dim(rasterm)[1]+w)) {
+            if( !length(which(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2 )  { shannond[rw-w,cl-w]<-NA
+        }else{
             tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]))
             if( "NA's"%in%names(tw) ) {
                 tw<-tw[-length(tw)]
             }
-            if( length(tw)<round((window^2)/2) ) {
-                shannond[rw-w,cl-w]<-NA
-            } else {
-                tw_values<-as.vector(tw)
-                p<-tw_values/sum(tw_values)
-                p_log<-log(p)
-                shannond[rw-w,cl-w]<-(-(sum(p*p_log)))
-            }
+            tw_values<-as.vector(tw)
+            p<-tw_values/sum(tw_values)
+            p_log<-log(p)
+            shannond[rw-w,cl-w]<-(-(sum(p*p_log)))
         }
-    } # End ShannonD
+    }
+} # End ShannonD
 }
 #
 #Return the output
