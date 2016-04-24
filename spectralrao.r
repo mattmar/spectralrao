@@ -11,7 +11,7 @@
 #####################################################
 
 #Function
-spectralrao<-function(matrix,distance_m="euclidean",window=10,mode="classic",shannon=TRUE,debugging=F) {
+spectralrao<-function(matrix,distance_m="euclidean",window=9,mode="classic",shannon=TRUE,debugging=F) {
 
 #Load required packages
     require(raster)
@@ -74,15 +74,15 @@ if(mode=="classic"){
 #Loop over each pixel
     for (cl in (1+w):(dim(rasterm)[2]+w)) {
         for(rw in (1+w):(dim(rasterm)[1]+w)) {
-            if( !length(which(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2 )  {
+            if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2 ) {
                 raoqe[rw-w,cl-w]<-NA
             }else{
                 tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]),maxsum=10000)
-                if("NA's" %in% names(tw)) {
+                if( "NA's"%in%names(tw) ) {
                     tw<-tw[-length(tw)]
                 }
                 if(debugging){
-                    message("Working on coords ",rw-w ,",",cl-w,". mw length: ",length(tw),", window size=",window)
+                    message("Working on coords ",rw ,",",cl,". classes length: ",length(tw),". window size=",window)
                 }
                 tw_labels<-names(tw)
                 tw_values<-as.vector(tw)
@@ -118,8 +118,7 @@ if(mode=="classic"){
 #Add fake columns and rows for moving w
     hor<-matrix(NA,ncol=dim(vls[[1]])[2],nrow=w)
     ver<-matrix(NA,ncol=w,nrow=dim(vls[[1]])[1]+w*2)
-    trastersm<-lapply(vls, function(x) {cbind(ver,rbind(hor,x,hor),ver)})
-
+    trastersm<-lapply(vls, function(x) {scale(cbind(ver,rbind(hor,x,hor),ver))})
 # Loop over all the pixels in the matrices
     if( (ncol(vls[[1]])*nrow(vls[[1]]))> 10000) {
         message("\n Warning: ",ncol(vls[[1]])*nrow(vls[[1]])*length(vls), " cells to be processed, may take some time... \n")
@@ -137,7 +136,7 @@ if(mode=="classic"){
                 }
                 return(out)
             } )
-            raoqe[rw-w,cl-w] <- sum(sqrt(Reduce('+',distances)) *(1/(window)^4))
+            raoqe[rw-w,cl-w] <- sum(sqrt(Reduce('+',distances)) * (1/(window)^4))
         } # end multimensional RaoQ
     }
 }
@@ -157,7 +156,7 @@ if(shannon==TRUE){
 #Loop over all the pixels
     for (cl in (1+w):(dim(rasterm)[2]+w)) {
         for(rw in (1+w):(dim(rasterm)[1]+w)) {
-            if( !length(which(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2 )  { shannond[rw-w,cl-w]<-NA
+            if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2 )  { shannond[rw-w,cl-w]<-NA
         }else{
             tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]))
             if( "NA's"%in%names(tw) ) {
