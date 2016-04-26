@@ -31,7 +31,7 @@ spectralrao<-function(matrix,distance_m="euclidean",window=9,mode="classic",shan
 #Deal with matrix and RasterLayer in a different way
     if( is(matrix[[1]],"RasterLayer") ) {
         if( mode=="classic" ){
-            rasterm<-round(as.matrix(rasterm),4)
+            rasterm<-round(as.matrix(rasterm),3)
             message("RasterLayer ok: \nRao and Shannon output matrices will be returned")
         }else if(mode=="multidimension" & shannon==FALSE){
             message(("RasterLayer ok: \nA raster object with multimension RaoQ will be returned"))
@@ -74,7 +74,7 @@ if(mode=="classic"){
 #Loop over each pixel
     for (cl in (1+w):(dim(rasterm)[2]+w)) {
         for(rw in (1+w):(dim(rasterm)[1]+w)) {
-            if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2 ) {
+            if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < (window^2)/2 ) {
                 raoqe[rw-w,cl-w]<-NA
             }else{
                 tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]),maxsum=10000)
@@ -156,7 +156,7 @@ if(shannon==TRUE){
 #Loop over all the pixels
     for (cl in (1+w):(dim(rasterm)[2]+w)) {
         for(rw in (1+w):(dim(rasterm)[1]+w)) {
-            if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2 )  { shannond[rw-w,cl-w]<-NA
+            if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < (window^2)/2 )  { shannond[rw-w,cl-w]<-NA
         }else{
             tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]))
             if( "NA's"%in%names(tw) ) {

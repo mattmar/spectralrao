@@ -29,8 +29,8 @@ raomatrix<-spectralrao(matrix=r2,distance_m="euclidean",window=3,shannon=TRUE)
 ###Comparison
 par(mfrow=c(1,3))
 raster::plot(raster(r2),main="landscape (NDVI)")
-raster::plot(raster(raomatrix[[1]]),main="Rao's Q")
-raster::plot(raster(raomatrix[[2]]),main="Shannon's Index")
+raster::plot(raster(raomatrix[[2]]),main="Shannon's H'")
+raster::plot(raster(raomatrix[[1]]),main="Univariate Rao's Q")
 
 ###Raos vs Shannon
 plot(raomatrix[[1]]~raomatrix[[2]],pch=16,col="grey",cex=2,xlab="ShannonD",ylab="RaoQ")
