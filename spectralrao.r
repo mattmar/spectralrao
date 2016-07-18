@@ -7,11 +7,11 @@
 ## distance 0. If the chosen distance ranges between
 ## 0 and 1, Rao's Max = 1-1/S (Simpson Diversity,
 ## where S is pixel classes).
-## Last update: 29th February
+## Last update: 18th July
 #####################################################
 
 #Function
-spectralrao<-function(matrix,distance_m="euclidean",window=9,mode="classic",shannon=TRUE,debugging=F) {
+spectralrao<-function(matrix,distance_m="euclidean",p=NULL,window=9,mode="classic",shannon=TRUE,debugging=F) {
 
 #Load required packages
     require(raster)
@@ -74,7 +74,7 @@ if(mode=="classic"){
 #Loop over each pixel
     for (cl in (1+w):(dim(rasterm)[2]+w)) {
         for(rw in (1+w):(dim(rasterm)[1]+w)) {
-            if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < (window^2)/2 ) {
+            if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2-((window^2)*0.1) ) {
                 raoqe[rw-w,cl-w]<-NA
             }else{
                 tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]),maxsum=10000)
@@ -98,12 +98,12 @@ if(mode=="classic"){
         }
     }
 } # End classic RaoQ
+#----------------------------------------------------#
 } else if(mode=="multidimension"){
 #
 #If multimensional RaoQ
 #
 #Check if there are NAs in the matrices
-
     if ( is(rasterm,"RasterLayer") ){
         if(any(sapply(lapply(matrix, function(x) {as.matrix(x)}), is.na)==TRUE))
             message("\n Warning: One or more RasterLayers contain NA which will be threated as 0")
@@ -112,14 +112,13 @@ if(mode=="classic"){
             message("\n Warning: One or more matrices contain NA which will be threated as 0")
         }
     }
-
 #Reshape values
     vls<-lapply(matrix, function(x) {as.matrix(x)})
 #Add fake columns and rows for moving w
     hor<-matrix(NA,ncol=dim(vls[[1]])[2],nrow=w)
     ver<-matrix(NA,ncol=w,nrow=dim(vls[[1]])[1]+w*2)
     trastersm<-lapply(vls, function(x) {scale(cbind(ver,rbind(hor,x,hor),ver))})
-# Loop over all the pixels in the matrices
+#Loop over all the pixels in the matrices
     if( (ncol(vls[[1]])*nrow(vls[[1]]))> 10000) {
         message("\n Warning: ",ncol(vls[[1]])*nrow(vls[[1]])*length(vls), " cells to be processed, may take some time... \n")
     }
@@ -128,15 +127,12 @@ if(mode=="classic"){
         for(rw in (1+w):(dim(vls[[1]])[1]+w)) {
             tw<-lapply(trastersm, function(x) { x[(rw-w):(rw+w),(cl-w):(cl+w)]
         })
-            distances<-lapply(tw, function(x) {
-                out<-matrix(NA,nrow=length(x),ncol=length(x))
-                for (i in 1:length(x)) {
-                    out[,i] <- as.vector((x[i] - x)^2)
-                    out[out %in% NA]<- 0
-                }
-                return(out)
-            } )
-            raoqe[rw-w,cl-w] <- sum(sqrt(Reduce('+',distances)) * (1/(window)^4))
+            distances <- lapply(tw, function(x) {
+             out <- dist(x,method=distance_m,p=p)
+             out[out %in% NA] <- 0
+             return(out)
+         })
+            raoqe[rw-w,cl-w] <- sum(Reduce('+',distances) * (1/(window))^2)
         } # end multimensional RaoQ
     }
 }
@@ -156,7 +152,7 @@ if(shannon==TRUE){
 #Loop over all the pixels
     for (cl in (1+w):(dim(rasterm)[2]+w)) {
         for(rw in (1+w):(dim(rasterm)[1]+w)) {
-            if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < (window^2)/2 )  { shannond[rw-w,cl-w]<-NA
+            if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2-((window^2)*0.1) ) { shannond[rw-w,cl-w]<-NA
         }else{
             tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]))
             if( "NA's"%in%names(tw) ) {
