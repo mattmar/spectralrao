@@ -11,7 +11,7 @@
 #####################################################
 
 #Function
-spectralrao<-function(matrix,distance_m="euclidean",p=NULL,window=9,mode="classic",shannon=TRUE,debugging=F) {
+spectralrao<-function(matrix,distance_m="euclidean",p=NULL,window=9,mode="classic",shannon=FALSE,debugging=F) {
 
 #Load required packages
     require(raster)
