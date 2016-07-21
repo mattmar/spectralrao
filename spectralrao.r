@@ -7,17 +7,20 @@
 ## distance 0. If the chosen distance ranges between
 ## 0 and 1, Rao's Max = 1-1/S (Simpson Diversity,
 ## where S is pixel classes).
-## Last update: 18th July
+## Latest update: 21th July
 #####################################################
-
 #Function
-spectralrao<-function(matrix,distance_m="euclidean",p=NULL,window=9,mode="classic",shannon=FALSE,debugging=F) {
-
+spectralrao<-function(matrix, distance_m="euclidean", p=NULL, window=9, mode="classic", shannon=FALSE, rescale=FALSE, na.tolerance=0.0, debugging=FALSE) {
+#
 #Load required packages
+#
     require(raster)
-
+#
 #Initial checks
-    if( !(is(matrix,"matrix") | is(matrix,"SpatialGridDataFrame") | is(matrix,"RasterLayer") | is(matrix,"list")) ) {stop("\nNot a valid input object.") }
+#
+    if( !(is(matrix,"matrix") | is(matrix,"SpatialGridDataFrame") | is(matrix,"RasterLayer") | is(matrix,"list")) ) {
+        stop("\nNot a valid input object.")
+    }
 #Change input matrix/ces names
     if( is(matrix,"SpatialGridDataFrame") ) {
         matrix <- raster(matrix)
@@ -27,7 +30,6 @@ spectralrao<-function(matrix,distance_m="euclidean",p=NULL,window=9,mode="classi
     } else if( is(matrix,"list") ) {
         rasterm<-matrix[[1]]
     }
-
 #Deal with matrix and RasterLayer in a different way
     if( is(matrix[[1]],"RasterLayer") ) {
         if( mode=="classic" ){
@@ -48,13 +50,15 @@ spectralrao<-function(matrix,distance_m="euclidean",p=NULL,window=9,mode="classi
         }else{stop("Matrix check failed: \nNot a valid input, please provide a matrix, list or RasterLayer object")
     }
 }
-
-#Derive operational moving window
+#
+##Derive operational moving window
+#
 if( window%%2==1 ){
     w <- (window-1)/2
-}else{stop("Moving window size must be odd")}
-
-#Output matrices preparation
+} else {stop("Moving window size must be odd")}
+#
+##Output matrices preparation
+#
 raoqe<-matrix(rep(NA,dim(rasterm)[1]*dim(rasterm)[2]),nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
 shannond<-matrix(rep(NA,dim(rasterm)[1]*dim(rasterm)[2]),nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
 #
@@ -74,30 +78,31 @@ if(mode=="classic"){
 #Loop over each pixel
     for (cl in (1+w):(dim(rasterm)[2]+w)) {
         for(rw in (1+w):(dim(rasterm)[1]+w)) {
-            if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2-((window^2)*0.1) ) {
+            if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2-((window^2)*na.tolerance) ) {
                 raoqe[rw-w,cl-w]<-NA
-            }else{
+            } else {
                 tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]),maxsum=10000)
                 if( "NA's"%in%names(tw) ) {
                     tw<-tw[-length(tw)]
                 }
-                if(debugging){
+                if(debugging) {
                     message("Working on coords ",rw ,",",cl,". classes length: ",length(tw),". window size=",window)
                 }
                 tw_labels<-names(tw)
                 tw_values<-as.vector(tw)
                 if(length(tw_values) == 1) {
                     raoqe[rw-w,cl-w]<-NA
-                }else{p<-tw_values/sum(tw_values)
-                p1<-combn(p,m=2,FUN=prod)
-                d2<-as.matrix(d1)
-                d2[upper.tri(d1,diag=TRUE)]<-NA
-                d3<-d2[as.numeric(tw_labels),as.numeric(tw_labels)]
-                raoqe[rw-w,cl-w]<-sum(p1*d3[!(is.na(d3))])
+                } else {
+                    p <- tw_values/sum(tw_values)
+                    p1 <- diag(0,length(tw_values))
+                    p1[upper.tri(p1)] <- c(combn(p,m=2,FUN=prod))
+                    p1[lower.tri(p1)] <- c(combn(p,m=2,FUN=prod))
+                    d2 <- unname(as.matrix(d1)[as.numeric(tw_labels),as.numeric(tw_labels)])
+                    raoqe[rw-w,cl-w]<-sum(p1*d2)
+                }
             }
         }
-    }
-} # End classic RaoQ
+    } # End classic RaoQ
 #----------------------------------------------------#
 } else if(mode=="multidimension"){
 #
@@ -112,65 +117,136 @@ if(mode=="classic"){
             message("\n Warning: One or more matrices contain NA which will be threated as 0")
         }
     }
-#Reshape values
+#
+##Check whether the distance is valid or not
+#
+    if( distance_m=="euclidean" | distance_m=="manhattan" | distance_m=="canberra" ) {
+        #Define the distance functions
+        #euclidean
+        multieuclidean <- function(x) {
+            tmp <- lapply(x, function(y) {
+                (y[[1]]-y[[2]])^2
+            })
+            return(sqrt(Reduce(`+`,tmp)))
+        }
+        #manhattan
+        multimanhattan <- function(x) {
+            tmp <- lapply(x, function(y) {
+                abs(y[[1]]-y[[2]])
+            })
+            return(sqrt(Reduce(`+`,tmp)))
+        }
+        #canberra
+        multicanberra <- function(x) {
+            tmp <- lapply(x, function(y) {
+                abs(y[[1]] - y[[2]]) / (y[[1]] + y[[2]])
+            })
+            return(Reduce(`+`,tmp))
+        }
+#
+##Decide what function to use
+#
+        if( distance_m=="euclidean") {
+            distancef <- get("multieuclidean")
+        } else if(distance_m=="manhattan") {
+            distancef <- get("multimanhattan")
+        } else if(distance_m=="canberra") {
+            distancef <- get("multicanberra")
+        }
+    } else {
+        stop("Distance function not defined for multidimensional Rao's Q; please chose among euclidean, manhattan or canberra")
+    }
+#
+##Reshape values
+#
     vls<-lapply(matrix, function(x) {as.matrix(x)})
-#Add fake columns and rows for moving w
+#
+##Rescale and add fake columns and rows for moving w
+#
     hor<-matrix(NA,ncol=dim(vls[[1]])[2],nrow=w)
     ver<-matrix(NA,ncol=w,nrow=dim(vls[[1]])[1]+w*2)
-    trastersm<-lapply(vls, function(x) {scale(cbind(ver,rbind(hor,x,hor),ver))})
-#Loop over all the pixels in the matrices
+    if(rescale) {
+        trastersm<-lapply(vls, function(x) {
+            t1 <- raster::scale(raster(cbind(ver,rbind(hor,x,hor),ver)))
+            t2 <- as.matrix(t1)
+            return(t2)
+        })
+    } else {
+        trastersm<-lapply(vls, function(x) {
+            cbind(ver,rbind(hor,x,hor),ver)
+        })
+    }
+#
+##Loop over all the pixels in the matrices
+#
     if( (ncol(vls[[1]])*nrow(vls[[1]]))> 10000) {
         message("\n Warning: ",ncol(vls[[1]])*nrow(vls[[1]])*length(vls), " cells to be processed, may take some time... \n")
     }
-
     for (cl in (1+w):(dim(vls[[1]])[2]+w)) {
         for(rw in (1+w):(dim(vls[[1]])[1]+w)) {
-            tw<-lapply(trastersm, function(x) { x[(rw-w):(rw+w),(cl-w):(cl+w)]
-        })
-            distances <- lapply(tw, function(x) {
-             out <- dist(x,method=distance_m,p=p)
-             out[out %in% NA] <- 0
-             return(out)
-         })
-            raoqe[rw-w,cl-w] <- sum(Reduce('+',distances) * (1/(window))^2)
-        } # end multimensional RaoQ
+            if( length(!which(!trastersm[[1]][c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2-((window^2)*na.tolerance) ) {
+                raoqe[rw-w,cl-w] <- NA
+            } else {
+
+                tw<-lapply(trastersm, function(x) { x[(rw-w):(rw+w),(cl-w):(cl+w)]
+            })
+#
+##Vectorize the matrices in the list and calculate
+#the among matrix pairwase distances
+                lv <- lapply(tw, function(x) {as.vector(t(x))})
+                vcomb <- combn(length(lv[[1]]),2)
+                vout <- c()
+                for(p in 1:ncol(vcomb) ) {
+                    lpair <- lapply(lv, function(chi) {
+                        c(chi[vcomb[1,p]],chi[vcomb[2,p]])
+                    })
+                    vout[p] <- distancef(lpair)
+                }
+                raoqe[rw-w,cl-w] <- sum(rep(vout,2) * (1/(window)^4),na.rm=TRUE)
+            }
+        }
     }
-}
+} # end multimensional RaoQ
+#----------------------------------------------------#
 #
-#ShannonD
+##ShannonD
 #
-if(shannon==TRUE){
+if(shannon){
     #Reshape values
     values<-as.numeric(as.factor(rasterm))
     rasterm_1<-matrix(data=values,nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
-
-#Add fake columns and rows for moving window
+#
+##Add fake columns and rows for moving window
+#
     hor<-matrix(NA,ncol=dim(rasterm)[2],nrow=w)
     ver<-matrix(NA,ncol=w,nrow=dim(rasterm)[1]+w*2)
     trasterm<-cbind(ver,rbind(hor,rasterm_1,hor),ver)
-
-#Loop over all the pixels
+#
+##Loop over all the pixels
+#
     for (cl in (1+w):(dim(rasterm)[2]+w)) {
         for(rw in (1+w):(dim(rasterm)[1]+w)) {
-            if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2-((window^2)*0.1) ) { shannond[rw-w,cl-w]<-NA
-        }else{
-            tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]))
-            if( "NA's"%in%names(tw) ) {
-                tw<-tw[-length(tw)]
+            if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2-((window^2)*na.tolerance) ) {
+                shannond[rw-w,cl-w]<-NA
+            } else {
+                tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]))
+                if( "NA's"%in%names(tw) ) {
+                    tw<-tw[-length(tw)]
+                }
+                tw_values<-as.vector(tw)
+                p<-tw_values/sum(tw_values)
+                p_log<-log(p)
+                shannond[rw-w,cl-w]<-(-(sum(p*p_log)))
             }
-            tw_values<-as.vector(tw)
-            p<-tw_values/sum(tw_values)
-            p_log<-log(p)
-            shannond[rw-w,cl-w]<-(-(sum(p*p_log)))
         }
-    }
-} # End ShannonD
+    } # End ShannonD
 }
+#----------------------------------------------------#
 #
 #Return the output
 #
 if( is(rasterm,"RasterLayer") ) {
-    if( shannon==TRUE) {
+    if( shannon) {
 #Rasterize the matrices if matrix==raster
         rastertemp <- stack(raster(raoqe, template=matrix),raster(shannond, template=raster))
     } else if(shannon==FALSE){
@@ -178,11 +254,11 @@ if( is(rasterm,"RasterLayer") ) {
     }
 }
 #
-#Return different outputs
+#Return multiple outputs
 #
 if( is(rasterm,"RasterLayer") ) {
     return(rastertemp)
-} else if( !is(rasterm,"RasterLayer") & shannon==TRUE ) {
+} else if( !is(rasterm,"RasterLayer") & shannon ) {
     return(list(raoqe,shannond))
 } else if( !is(rasterm,"RasterLayer") & shannon==FALSE ) {
     return(list(raoqe))
