@@ -14,7 +14,7 @@ multimanhattan <- function(x) {
 
 multicanberra <- function(x) {
     tmp <- lapply(x, function(y) {
-        abs(y[[1]] - y[[2]]) / (y[[1]] + y[[2]])
+        abs(y[[1]] - y[[2]]) / (abs(y[[1]]) + abs(y[[2]]))
     })
     return(Reduce(`+`,tmp))
 }

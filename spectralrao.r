@@ -10,7 +10,7 @@
 ## Latest update: 21th July
 #####################################################
 #Function
-spectralrao<-function(matrix, distance_m="euclidean", p=NULL, window=9, mode="classic", shannon=FALSE, rescale=FALSE, na.tolerance=0.0, debugging=FALSE) {
+spectralrao<-function(matrix, distance_m="euclidean", p=NULL, window=9, mode="classic", shannon=FALSE, rescale=FALSE, na.tolerance=0.0, simplify=3, debugging=FALSE) {
 #
 #Load required packages
 #
@@ -33,7 +33,7 @@ spectralrao<-function(matrix, distance_m="euclidean", p=NULL, window=9, mode="cl
 #Deal with matrix and RasterLayer in a different way
     if( is(matrix[[1]],"RasterLayer") ) {
         if( mode=="classic" ){
-            rasterm<-round(as.matrix(rasterm),3)
+            rasterm<-round(as.matrix(rasterm),simplify)
             message("RasterLayer ok: \nRao and Shannon output matrices will be returned")
         }else if(mode=="multidimension" & shannon==FALSE){
             message(("RasterLayer ok: \nA raster object with multimension RaoQ will be returned"))
@@ -134,12 +134,12 @@ if(mode=="classic"){
             tmp <- lapply(x, function(y) {
                 abs(y[[1]]-y[[2]])
             })
-            return(sqrt(Reduce(`+`,tmp)))
+            return(Reduce(`+`,tmp))
         }
         #canberra
         multicanberra <- function(x) {
             tmp <- lapply(x, function(y) {
-                abs(y[[1]] - y[[2]]) / (y[[1]] + y[[2]])
+                abs(y[[1]] - y[[2]]) / (abs(y[[1]]) + abs(y[[2]]))
             })
             return(Reduce(`+`,tmp))
         }
