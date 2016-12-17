@@ -1,5 +1,5 @@
 # spectralrao(...)
- Description: Applying Rao's index to remote sensing data
+ Description: To calculate Rao's index on remote sensed data
 
 ##Example
 ###Random simulated spectral matrix
@@ -23,22 +23,22 @@ r4 <- t(cbind(rbind(xy1, xy2),rbind(xy3,xy4)))
 r3<-matrix(data=c(-0.5,-0.5,-0.5,-0.5,0.8, -0.5,-0.5,-0.5,-0.5,0.8,0,0,0,0,0,0,0,0.8,0.8,0.8,0,0.5,0.8,0.8,0.5),nrow=5,ncol=5,byrow=F)
 
 
-###Run the function on one dimension
+###Run the function considering a single data dimension
 raomatrix<-spectralrao(matrix=r2,distance_m="euclidean",window=3,shannon=TRUE)
 
-###Comparison
+###Comparison between indeces
 par(mfrow=c(1,3))
 raster::plot(raster(r2),main="landscape (NDVI)")
 raster::plot(raster(raomatrix[[2]]),main="Shannon's H'")
 raster::plot(raster(raomatrix[[1]]),main="Univariate Rao's Q")
 
-###Raos vs Shannon
+###Raos vs Shannon scatterplot
 plot(raomatrix[[1]]~raomatrix[[2]],pch=16,col="grey",cex=2,xlab="ShannonD",ylab="RaoQ")
 
 ###Run the function as multidimensional RaoQ
 raomatrix<-spectralrao(matrix=list(r2,r4),window=3,mode="multidimension",distance_m="manhattan",shannon=FALSE)
 
-###Comparison
+###Comparison between varaibleas and Rao's index
 par(mfrow=c(1,3))
 raster::plot(raster(r2),main="layer 1 (eg, NDVI)")
 raster::plot(raster(r4),main="Layer 2 (eg, Soil pH)")
@@ -85,14 +85,15 @@ raos <- raster(raomatrix[[1]],template=raster(ndvi2015_final))
 shan <- raster(raomatrix[[2]],template=raster(ndvi2015_final))
 
 ###Plot the results
- clrbrw<-colorRampPalette(c("#fc8d59","#ffffbf","#91cf60"))(10)
+####Define the colors for mapping
+clrbrw<-colorRampPalette(c("#fc8d59","#ffffbf","#91cf60"))(10)
 
 map2color<-function(x,pal,limits=NULL){
   if(is.null(limits)) limits=range(x)
     pal[findInterval(x,seq(limits[1],limits[2],length.out=length(pal)+1), all.inside=TRUE)]
 }
 
-png("~/all_modis_ndvi_june_2015_2km_1.png",width = 149, height = 290,res=300,type = c("cairo"),units="mm",pointsize="15")
+#Plot the maps
 par(mfrow=c(3,1))
 
 raster::plot(ndvi2015_final, main="MODIS NDVI June 2015",legend=FALSE)
@@ -105,10 +106,7 @@ raster::plot(mask(raos,ndvi2015_final),main="Rao's Q"
 ,legend=FALSE)
 raster::plot(raos, legend.only=TRUE, axis.args=list(at=seq(0.01,0.4,length.out=5), labels=round(seq(0,0.4,length.out=5),2)))
 
-dev.off()
-
-
-#Compare multiple distance
+#Compare multiple distances
 dst<-c("euclidean","maximum","manhattan","canberra","binary","minkowski")
 
 outl<-list()
