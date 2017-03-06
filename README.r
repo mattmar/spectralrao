@@ -29,10 +29,36 @@ raomatrix<-spectralrao(matrix=r2,distance_m="euclidean",window=3,shannon=TRUE,na
 png("~/spectralrao_monodimensional.png",width = 300, height = 105,res=300,type = c("cairo"),units="mm",pointsize="15")
 par(mfrow=c(1,3),mar=c(5, 3, 4, 5),family="Arial")
 raster::plot(raster(r2),main="Layer 1 (e.g., (NDVI)")
-raster::plot(raster(raomatrix[[2]]),main="Shannon's H'",legend=F)
-raster::plot(raster(as.matrix(c(rep(2.1,10),rep(1.9,10)))), legend.only=TRUE)
-raster::plot(raster(raomatrix[[1]]),main="Univariate Rao's\n (Euclidean distance)",legend=T)
+raster::plot(raster(raomatrix[[2]]),main="Shannon's H'",legend=F,col=clp_map)
+raster::plot(raster(as.matrix(c(rep(2.1,10),rep(1.9,10)))), legend.only=TRUE,col=clp_map)
+raster::plot(raster(raomatrix[[1]]),main="Univariate Rao's\n (Euclidean distance)",legend=T,col=clp_map)
 dev.off()
+
+##Comprison enhanced [standard legend]
+#Color palette
+library('RColorBrewer')
+clp<-brewer.pal(9,"RdYlGn")
+
+#Convert raster to dataframe
+df <- melt(lapply(lapply(list(r2,raomatrix[[1]],raomatrix[[2]]),raster),as.data.frame,xy=T),id.vars=c("x", "y"), variable.name="index")
+
+#Add correct label for facets
+df$L1<-factor(df$L1,labels=c("NDVI","Rao","Shannon"),order=T)
+
+#plot with ggplot2
+ggplot(data=df, aes(x=x, y=y)) + 
+geom_raster(aes(fill=value)) +
+coord_equal() +
+facet_wrap(~L1, nrow=1) + theme_bw() +
+scale_fill_gradientn(colours=clp) +
+geom_text(aes(label=round(df$value, digits = 2)),size=1.5) +
+theme(legend.title=element_blank(),
+	strip.text = element_text(family="Arial",size=12, colour = "black", angle = 0, face = "bold")) +
+scale_x_continuous(expand = c(0,0)) +
+scale_y_continuous(expand = c(0,0))
+
+#Save with proper resolution
+ggsave("~/raoshannon.png",dpi=300,height=3,width=9)
 
 ###Raos vs Shannon
 plot(raomatrix[[1]]~raomatrix[[2]],pch=16,col="grey",cex=2,xlab="ShannonD",ylab="RaoQ")
@@ -89,12 +115,7 @@ raos <- raster(raomatrix[[1]],template=raster(ndvi2015_final))
 shan <- raster(raomatrix[[2]],template=raster(ndvi2015_final))
 
 ###Plot the results
- clrbrw<-colorRampPalette(c("#fc8d59","#ffffbf","#91cf60"))(10)
-
-map2color<-function(x,pal,limits=NULL){
-  if(is.null(limits)) limits=range(x)
-    pal[findInterval(x,seq(limits[1],limits[2],length.out=length(pal)+1), all.inside=TRUE)]
-}
+clrbrw<-colorRampPalette(c("#fc8d59","#ffffbf","#91cf60"))(10)
 
 png("~/all_modis_ndvi_june_2015_2km_1.png",width = 149, height = 290,res=300,type = c("cairo"),units="mm",pointsize="15")
 par(mfrow=c(3,1))

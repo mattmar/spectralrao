@@ -31,6 +31,32 @@ raster::plot(raster(r2),main="landscape (NDVI)")
 raster::plot(raster(raomatrix[[2]]),main="Shannon's H'")
 raster::plot(raster(raomatrix[[1]]),main="Univariate Rao's Q")
 
+####Comprison enhanced [standard legend]
+###Color palette
+library('RColorBrewer')
+clp<-brewer.pal(9,"RdYlGn")
+
+###Convert raster to dataframe
+df <- melt(lapply(lapply(list(r2,raomatrix[[1]],raomatrix[[2]]),raster),as.data.frame,xy=T),id.vars=c("x", "y"), variable.name="index")
+
+###Add correct label for facets
+df$L1<-factor(df$L1,labels=c("NDVI","Rao","Shannon"),order=T)
+
+###plot with ggplot2
+ggplot(data=df, aes(x=x, y=y)) + 
+geom_raster(aes(fill=value)) +
+coord_equal() +
+facet_wrap(~L1, nrow=1) + theme_bw() +
+scale_fill_gradientn(colours=clp) +
+geom_text(aes(label=round(df$value, digits = 2)),size=1.5) +
+theme(legend.title=element_blank(),
+	strip.text = element_text(family="Arial",size=12, colour = "black", angle = 0, face = "bold")) +
+scale_x_continuous(expand = c(0,0)) +
+scale_y_continuous(expand = c(0,0))
+
+###Save with proper resolution
+ggsave("~/raoshannon.png",dpi=300,height=3,width=9)
+
 ####Raos vs Shannon scatterplot
 plot(raomatrix[[1]]~raomatrix[[2]],pch=16,col="grey",cex=2,xlab="ShannonD",ylab="RaoQ")
 
