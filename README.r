@@ -23,7 +23,7 @@ r4 <- t(cbind(rbind(xy1, xy2),rbind(xy3,xy4)))
 r3<-matrix(data=c(-0.5,-0.5,-0.5,-0.5,0.8, -0.5,-0.5,-0.5,-0.5,0.8,0,0,0,0,0,0,0,0.8,0.8,0.8,0,0.5,0.8,0.8,0.5),nrow=5,ncol=5,byrow=F)
 
 ###Run the function on one dimension
-raomatrix<-spectralrao(matrix=r2,distance_m="euclidean",window=3,shannon=TRUE,na.tolerance=1)
+raomatrix<-spectralrao(matrix=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1)
 
 ###Comparison
 png("~/spectralrao_monodimensional.png",width = 300, height = 105,res=300,type = c("cairo"),units="mm",pointsize="15")
@@ -34,7 +34,12 @@ raster::plot(raster(as.matrix(c(rep(2.1,10),rep(1.9,10)))), legend.only=TRUE,col
 raster::plot(raster(raomatrix[[1]]),main="Univariate Rao's\n (Euclidean distance)",legend=T,col=clp_map)
 dev.off()
 
-##Comprison enhanced [standard legend]
+###Check running tume for parallelized and sequential functions on one dimension
+r1<-matrix(rpois(25000,lambda=5),nrow=500,ncol=500)
+system.time(raop<-spectralrao(matrix=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1, nc.cores=8)) #75.669
+system.time(raos<-spectralrao(matrix=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1)) #89.064
+
+###Comprison enhanced [standard legend]
 #Color palette
 library('RColorBrewer')
 clp<-brewer.pal(9,"RdYlGn")
@@ -82,7 +87,8 @@ raster::plot(raster(raomatrix[[1]]))
 
 ###Download NDVI from NASA at 0.1 degrees and derive Rao's and Shannon index
 cd ~
-wget -O example_modis_ndvi_2015.tiff http://neo.sci.gsfc.nasa.gov/servlet/RenderData?si=1690249&cs=rgb&format=TIFF&width=3600&height=1800
+wget -O example_modis_ndvi_2015.tiff "http://neo.sci.gsfc.nasa.gov/servlet/RenderData?si=1690249&cs=rgb&format=TIFF&width=3600&height=1800"
+
 wget "http://ec.europa.eu/eurostat/cache/GISCO/geodatafiles/CNTR_2014_60M_SH.zip"
 unzip CNTR_2014_60M_SH.zip
 
@@ -93,7 +99,7 @@ library(raster)
 library(rgeos)
 
 #Import Europe boundary
-world <- readOGR(dsn = "./CNTR_2014_60M_SH/CNTR_2014_60M_SH/CNTR_2014_60M_SH/Data/", layer = "CNTR_RG_60M_2014")
+world <- readOGR(dsn = "./CNTR_2014_60M_SH/Data/", layer = "CNTR_RG_60M_2014")
 
 #Importa NDVI
 ndvi2015 <- raster("~/example_modis_ndvi_2015.tiff", crs=CRS("+proj=longlat +datum=WGS84"))
