@@ -15,9 +15,6 @@ spectralrao<-function(matrix, distance_m="euclidean", p=NULL, window=9, mode="cl
 #Load required packages
 #
     require(raster)
-    require(foreach)
-    require(doSNOW)
-    require(Rmpi)
 #
 #Initial checks
 #
@@ -54,7 +51,7 @@ spectralrao<-function(matrix, distance_m="euclidean", p=NULL, window=9, mode="cl
     }
 }
 if(nc.cores>1) {
-    message("Parallel calculation")
+    message("Parallel calculation\n##########################")
 }
 #
 ##Derive operational moving window
@@ -68,38 +65,49 @@ if( window%%2==1 ){
 raoqe<-matrix(rep(NA,dim(rasterm)[1]*dim(rasterm)[2]),nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
 shannond<-matrix(rep(NA,dim(rasterm)[1]*dim(rasterm)[2]),nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
 #
-##Create cluster object with given number of slaves
-#
-if(nc.cores > 1) {
-    plr<<-TRUE
-    if(cluster.type=="SOCK" || cluster.type=="FORK") {
-        cls <- parallel::makeCluster(nc.cores,type=cluster.type, outfile="",useXDR=FALSE,methods=FALSE,output="")
-    } else if(cluster.type=="MPI") {
-        cls <- makeMPIcluster(nc.cores,outfile="",useXDR=FALSE,methods=FALSE,output="")
-    }
-    #
-    ##Start the parallelized loop over iter
-    #
-    registerDoSNOW(cls)
-}
-#
 #If classic RaoQ - parallelized
 #
 if(mode=="classic") {
     if(nc.cores>1) {
-#Reshape values
+#
+##required
+#
+        require(foreach)
+        require(doSNOW)
+        require(Rmpi)
+#
+##Reshape values
+#
         values<-as.numeric(as.factor(rasterm))
         if(debugging){print("check_1")}
         rasterm_1<-matrix(data=values,nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
-#Add fake columns and rows for moving window
+#
+##Add fake columns and rows for moving window
+#
         hor<-matrix(NA,ncol=dim(rasterm)[2],nrow=w)
         ver<-matrix(NA,ncol=w,nrow=dim(rasterm)[1]+w*2)
         trasterm<-cbind(ver,rbind(hor,rasterm_1,hor),ver)
-#Derive distance matrix
+#
+##Derive distance matrix
+#
         classes<-levels(as.factor(rasterm))
         d1<-dist(classes,method=distance_m)
-#Loop over each pixel
+#
+##Create cluster object with given number of slaves
+#
+        plr<<-TRUE
+        if(cluster.type=="SOCK" || cluster.type=="FORK") {
+            cls <- parallel::makeCluster(nc.cores,type=cluster.type, outfile="",useXDR=FALSE,methods=FALSE,output="")
+        } else if(cluster.type=="MPI") {
+            cls <- makeMPIcluster(nc.cores,outfile="",useXDR=FALSE,methods=FALSE,output="")
+        }
+        registerDoSNOW(cls)
+        gc()
+    #
+    ##Start the parallelized loop over iter
+    #
         raop <- foreach(cl=(1+w):(dim(rasterm)[2]+w)) %dopar% {
+            cat(cl)
             vout<-c()
             for(rw in (1+w):(dim(rasterm)[1]+w)) {
                 if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2-((window^2)*na.tolerance) ) {
@@ -114,7 +122,7 @@ if(mode=="classic") {
                     }
                     tw_labels<-names(tw)
                     tw_values<-as.vector(tw)
-                    if(length(tw_values) == 1) {
+                    if(length(tw_values) <= 2) {
                         vv<-raoqe[rw-w,cl-w]
                     } else {
                         p <- tw_values/sum(tw_values)
@@ -162,7 +170,7 @@ if(mode=="classic") {
                     }
                     tw_labels<-names(tw)
                     tw_values<-as.vector(tw)
-                    if(length(tw_values) == 1) {
+                    if(length(tw_values) == 2) {
                         raoqe[rw-w,cl-w]<-NA
                     } else {
                         p <- tw_values/sum(tw_values)
@@ -319,7 +327,7 @@ if(shannon){
 #Return the output
 #
 if( is(rasterm,"RasterLayer") ) {
-    if( shannon) {
+    if( shannon ) {
 #Rasterize the matrices if matrix==raster
         rastertemp <- stack(raster(raoqe, template=matrix),raster(shannond, template=raster))
     } else if(shannon==FALSE) {

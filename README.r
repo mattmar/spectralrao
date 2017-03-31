@@ -34,7 +34,7 @@ raster::plot(raster(as.matrix(c(rep(2.1,10),rep(1.9,10)))), legend.only=TRUE,col
 raster::plot(raster(raomatrix[[1]]),main="Univariate Rao's\n (Euclidean distance)",legend=T,col=clp_map)
 dev.off()
 
-###Check running tume for parallelized and sequential functions on one dimension
+###Check running time for parallelized and sequential functions on one dimension
 r1<-matrix(rpois(25000,lambda=5),nrow=500,ncol=500)
 system.time(raop<-spectralrao(matrix=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1, nc.cores=8)) #75.669
 system.time(raos<-spectralrao(matrix=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1)) #89.064
