@@ -33,7 +33,7 @@ spectralrao<-function(input, distance_m="euclidean", p=NULL, window=9, mode="cla
 #Deal with matrices and RasterLayer in a different way
     if( is(input[[1]],"RasterLayer") ) {
         if( mode=="classic" ){
-#If the data is in float number transform them in integer
+#If the data is float number transform it in integer
             if( !is.integer(getValues(rasterm)) ){
                 mfactor<-100^simplify
                 rasterm<-apply(as.matrix(rasterm*mfactor), 1:2, function(x) as.integer(x))
@@ -149,6 +149,7 @@ if(mode=="classic") {
         return(vout)
     } # End of for loop 
     raoqe<-do.call(cbind,raop)/mfactor
+    return(raoqe)
     stopCluster(cls) # Close the cluster
 } # End classic RaoQ - parallelized
 #----------------------------------------------------#
