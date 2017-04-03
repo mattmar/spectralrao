@@ -35,6 +35,7 @@ spectralrao<-function(input, distance_m="euclidean", p=NULL, window=9, mode="cla
         if( mode=="classic" ){
 #If the data is float number transform it in integer
             if( !is.integer(getValues(rasterm)) ){
+                isfloat<-TRUE
                 mfactor<-100^simplify
                 rasterm<-apply(as.matrix(rasterm*mfactor), 1:2, function(x) as.integer(x))
                 message("Converting in a integer matrix...")
@@ -148,7 +149,11 @@ if(mode=="classic") {
         }
         return(vout)
     } # End of for loop 
+    if(isfloat){
     raoqe<-do.call(cbind,raop)/mfactor
+    }else{
+        raoqe<-do.call(cbind,raop)
+    }
     return(raoqe)
     stopCluster(cls) # Close the cluster
 } # End classic RaoQ - parallelized
@@ -190,7 +195,11 @@ else if(nc.cores==1) {
                     p1[upper.tri(p1)] <- c(combn(p,m=2,FUN=prod))
                     p1[lower.tri(p1)] <- c(combn(p,m=2,FUN=prod))
                     d2 <- unname(as.matrix(d1)[as.numeric(tw_labels),as.numeric(tw_labels)])
-                    raoqe[rw-w,cl-w]<-sum(p1*d2)/mfactor
+                     if(isint) {
+                        raoqe[rw-w,cl-w]<-sum(p1*d2)/mfactor
+                    } else {
+                        raoqe[rw-w,cl-w]<-sum(p1*d2)
+                    }
                 }
             }
         } 
