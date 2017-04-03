@@ -10,7 +10,7 @@
 ## Latest update: 21th July
 #####################################################
 #Function
-spectralrao<-function(matrix, distance_m="euclidean", p=NULL, window=9, mode="classic", shannon=FALSE, rescale=FALSE, na.tolerance=0.0, simplify=3, nc.cores=1, cluster.type="MPI",debugging=FALSE) {
+spectralrao<-function(input, distance_m="euclidean", p=NULL, window=9, mode="classic", shannon=FALSE, rescale=FALSE, na.tolerance=0.0, simplify=3, nc.cores=1, cluster.type="MPI",debugging=FALSE) {
 #
 #Load required packages
 #
@@ -18,29 +18,36 @@ spectralrao<-function(matrix, distance_m="euclidean", p=NULL, window=9, mode="cl
 #
 #Initial checks
 #
-    if( !(is(matrix,"matrix") | is(matrix,"SpatialGridDataFrame") | is(matrix,"RasterLayer") | is(matrix,"list")) ) {
+    if( !(is(input,"matrix") | is(input,"SpatialGridDataFrame") | is(input,"RasterLayer") | is(input,"list")) ) {
         stop("\nNot a valid input object.")
     }
-#Change input matrix/ces names
-    if( is(matrix,"SpatialGridDataFrame") ) {
-        matrix <- raster(matrix)
+#Change input input/ces names
+    if( is(input,"SpatialGridDataFrame") ) {
+        input <- raster(input)
     }
-    if( is(matrix,"matrix") | is(matrix,"RasterLayer")) {
-        rasterm<-matrix
-    } else if( is(matrix,"list") ) {
-        rasterm<-matrix[[1]]
+    if( is(input,"matrix") | is(input,"RasterLayer")) {
+        rasterm<-input
+    } else if( is(input,"list") ) {
+        rasterm<-input[[1]]
     }
-#Deal with matrix and RasterLayer in a different way
-    if( is(matrix[[1]],"RasterLayer") ) {
+#Deal with matrices and RasterLayer in a different way
+    if( is(input[[1]],"RasterLayer") ) {
         if( mode=="classic" ){
-            rasterm<-round(as.matrix(rasterm),simplify)
+#If the data is in float number transform them in integer
+            if( !is.integer(getValues(rasterm)) ){
+                mfactor<-100^simplify
+                rasterm<-apply(as.matrix(rasterm*mfactor), 1:2, function(x) as.integer(x))
+                message("Converting in a integer matrix...")
+            }else{
+                rasterm<-as.matrix(rasterm)
+            }
             message("RasterLayer ok: \nRao and Shannon output matrices will be returned")
         }else if(mode=="multidimension" & shannon==FALSE){
             message(("RasterLayer ok: \nA raster object with multimension RaoQ will be returned"))
         }else if(mode=="multidimension" & shannon==TRUE){
             stop(("Matrix check failed: \nMultidimension and Shannon not compatible, set shannon=FALSE"))
         }
-    }else if( is(matrix,"matrix") | is(matrix,"list") ) {
+    }else if( is(input,"matrix") | is(input,"list") ) {
         if(mode=="classic"){
             message("Matrix check ok: \nRao and Shannon output matrices will be returned")
         }else if(mode=="multidimension" & shannon==FALSE){
@@ -51,7 +58,7 @@ spectralrao<-function(matrix, distance_m="euclidean", p=NULL, window=9, mode="cl
     }
 }
 if(nc.cores>1) {
-    message("Parallel calculation\n##########################")
+    message("################### Starting parallel calculation ##########################")
 }
 #
 ##Derive operational moving window
@@ -63,7 +70,9 @@ if( window%%2==1 ){
 ##Output matrices preparation
 #
 raoqe<-matrix(rep(NA,dim(rasterm)[1]*dim(rasterm)[2]),nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
-shannond<-matrix(rep(NA,dim(rasterm)[1]*dim(rasterm)[2]),nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
+if(shannon){
+    shannond<-matrix(rep(NA,dim(rasterm)[1]*dim(rasterm)[2]),nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
+}
 #
 #If classic RaoQ - parallelized
 #
@@ -78,8 +87,8 @@ if(mode=="classic") {
 #
 ##Reshape values
 #
-        values<-as.numeric(as.factor(rasterm))
-        if(debugging){print("check_1")}
+        values<-as.integer(as.factor(rasterm))
+        if(debugging){cat("check_1")}
         rasterm_1<-matrix(data=values,nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
 #
 ##Add fake columns and rows for moving window
@@ -107,83 +116,85 @@ if(mode=="classic") {
     ##Start the parallelized loop over iter
     #
         raop <- foreach(cl=(1+w):(dim(rasterm)[2]+w)) %dopar% {
+           if(debugging) {
             cat(cl)
-            vout<-c()
-            for(rw in (1+w):(dim(rasterm)[1]+w)) {
-                if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2-((window^2)*na.tolerance) ) {
+        }
+        vout<-c()
+        for(rw in (1+w):(dim(rasterm)[1]+w)) {
+            if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2-((window^2)*na.tolerance) ) {
+                vv<-raoqe[rw-w,cl-w]
+            } else {
+                tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]),maxsum=10000)
+                if( "NA's"%in%names(tw) ) {
+                    tw<-tw[-length(tw)]
+                }
+                if(debugging) {
+                    message("Working on coords ",rw ,",",cl,". classes length: ",length(tw),". window size=",window)
+                }
+                tw_labels<-names(tw)
+                tw_values<-as.vector(tw)
+                if(length(tw_values) <= 2) {
                     vv<-raoqe[rw-w,cl-w]
                 } else {
-                    tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]),maxsum=10000)
-                    if( "NA's"%in%names(tw) ) {
-                        tw<-tw[-length(tw)]
-                    }
-                    if(debugging) {
-                        message("Working on coords ",rw ,",",cl,". classes length: ",length(tw),". window size=",window)
-                    }
-                    tw_labels<-names(tw)
-                    tw_values<-as.vector(tw)
-                    if(length(tw_values) <= 2) {
-                        vv<-raoqe[rw-w,cl-w]
-                    } else {
-                        p <- tw_values/sum(tw_values)
-                        p1 <- diag(0,length(tw_values))
-                        p1[upper.tri(p1)] <- c(combn(p,m=2,FUN=prod))
-                        p1[lower.tri(p1)] <- c(combn(p,m=2,FUN=prod))
-                        d2 <- unname(as.matrix(d1)[as.numeric(tw_labels),as.numeric(tw_labels)])
-                        vv<-sum(p1*d2)
-                    }
+                    p <- tw_values/sum(tw_values)
+                    p1 <- diag(0,length(tw_values))
+                    p1[upper.tri(p1)] <- c(combn(p,m=2,FUN=prod))
+                    p1[lower.tri(p1)] <- c(combn(p,m=2,FUN=prod))
+                    d2 <- unname(as.matrix(d1)[as.numeric(tw_labels),as.numeric(tw_labels)])
+                    vv<-sum(p1*d2)
                 }
-                vout<-append(vout,vv)
             }
-            return(vout)
-        } # End of for loop 
-        raoqe<-do.call(cbind,raop)
-        stopCluster(cls) # Close the cluster
-    } # End classic RaoQ - parallelized
+            vout<-append(vout,vv)
+        }
+        return(vout)
+    } # End of for loop 
+    raoqe<-do.call(cbind,raop)/mfactor
+    stopCluster(cls) # Close the cluster
+} # End classic RaoQ - parallelized
 #----------------------------------------------------#
 #
 #If classic RaoQ - sequential
 #
-    else if(nc.cores==1) {
+else if(nc.cores==1) {
 #Reshape values
-        values<-as.numeric(as.factor(rasterm))
-        rasterm_1<-matrix(data=values,nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
+    values<-as.numeric(as.factor(rasterm))
+    rasterm_1<-matrix(data=values,nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
 #Add fake columns and rows for moving window
-        hor<-matrix(NA,ncol=dim(rasterm)[2],nrow=w)
-        ver<-matrix(NA,ncol=w,nrow=dim(rasterm)[1]+w*2)
-        trasterm<-cbind(ver,rbind(hor,rasterm_1,hor),ver)
+    hor<-matrix(NA,ncol=dim(rasterm)[2],nrow=w)
+    ver<-matrix(NA,ncol=w,nrow=dim(rasterm)[1]+w*2)
+    trasterm<-cbind(ver,rbind(hor,rasterm_1,hor),ver)
 #Derive distance matrix
-        classes<-levels(as.factor(rasterm))
-        d1<-dist(classes,method=distance_m)
+    classes<-levels(as.factor(rasterm))
+    d1<-dist(classes,method=distance_m)
 #Loop over each pixel
-        for (cl in (1+w):(dim(rasterm)[2]+w)) {
-            for(rw in (1+w):(dim(rasterm)[1]+w)) {
-                if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2-((window^2)*na.tolerance) ) {
+    for (cl in (1+w):(dim(rasterm)[2]+w)) {
+        for(rw in (1+w):(dim(rasterm)[1]+w)) {
+            if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2-((window^2)*na.tolerance) ) {
+                raoqe[rw-w,cl-w]<-NA
+            } else {
+                tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]),maxsum=10000)
+                if( "NA's"%in%names(tw) ) {
+                    tw<-tw[-length(tw)]
+                }
+                if(debugging) {
+                    message("Working on coords ",rw ,",",cl,". classes length: ",length(tw),". window size=",window)
+                }
+                tw_labels<-names(tw)
+                tw_values<-as.vector(tw)
+                if(length(tw_values) == 2) {
                     raoqe[rw-w,cl-w]<-NA
                 } else {
-                    tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]),maxsum=10000)
-                    if( "NA's"%in%names(tw) ) {
-                        tw<-tw[-length(tw)]
-                    }
-                    if(debugging) {
-                        message("Working on coords ",rw ,",",cl,". classes length: ",length(tw),". window size=",window)
-                    }
-                    tw_labels<-names(tw)
-                    tw_values<-as.vector(tw)
-                    if(length(tw_values) == 2) {
-                        raoqe[rw-w,cl-w]<-NA
-                    } else {
-                        p <- tw_values/sum(tw_values)
-                        p1 <- diag(0,length(tw_values))
-                        p1[upper.tri(p1)] <- c(combn(p,m=2,FUN=prod))
-                        p1[lower.tri(p1)] <- c(combn(p,m=2,FUN=prod))
-                        d2 <- unname(as.matrix(d1)[as.numeric(tw_labels),as.numeric(tw_labels)])
-                        raoqe[rw-w,cl-w]<-sum(p1*d2)
-                    }
+                    p <- tw_values/sum(tw_values)
+                    p1 <- diag(0,length(tw_values))
+                    p1[upper.tri(p1)] <- c(combn(p,m=2,FUN=prod))
+                    p1[lower.tri(p1)] <- c(combn(p,m=2,FUN=prod))
+                    d2 <- unname(as.matrix(d1)[as.numeric(tw_labels),as.numeric(tw_labels)])
+                    raoqe[rw-w,cl-w]<-sum(p1*d2)/mfactor
                 }
-            } 
-        } # End of for loop 
-    } # End classic RaoQ - sequential
+            }
+        } 
+    } # End of for loop 
+} # End classic RaoQ - sequential
 #----------------------------------------------------#
 } else if(mode=="multidimension"){
 #
@@ -191,10 +202,10 @@ if(mode=="classic") {
 #
 #Check if there are NAs in the matrices
     if ( is(rasterm,"RasterLayer") ){
-        if(any(sapply(lapply(matrix, function(x) {as.matrix(x)}), is.na)==TRUE))
+        if(any(sapply(lapply(input, function(x) {as.matrix(x)}), is.na)==TRUE))
             message("\n Warning: One or more RasterLayers contain NA which will be threated as 0")
     } else if ( is(rasterm,"matrix") ){
-        if(any(sapply(matrix, is.na)==TRUE) ) {
+        if(any(sapply(input, is.na)==TRUE) ) {
             message("\n Warning: One or more matrices contain NA which will be threated as 0")
         }
     }
@@ -240,7 +251,7 @@ if(mode=="classic") {
 #
 ##Reshape values
 #
-    vls<-lapply(matrix, function(x) {as.matrix(x)})
+    vls<-lapply(input, function(x) {as.matrix(x)})
 #
 ##Rescale and add fake columns and rows for moving w
 #
@@ -314,10 +325,12 @@ if(shannon){
                 if( "NA's"%in%names(tw) ) {
                     tw<-tw[-length(tw)]
                 }
+                tw[tw>1]<-1
                 tw_values<-as.vector(tw)
-                p<-tw_values/sum(tw_values)
+                p<-tw_values/length(tw_values)
                 p_log<-log(p)
                 shannond[rw-w,cl-w]<-(-(sum(p*p_log)))
+                #cat(paste(cl,rw,(-(sum(p*p_log)))),"\n")
             }
         }
     } # End ShannonD
@@ -329,7 +342,7 @@ if(shannon){
 if( is(rasterm,"RasterLayer") ) {
     if( shannon ) {
 #Rasterize the matrices if matrix==raster
-        rastertemp <- stack(raster(raoqe, template=matrix),raster(shannond, template=raster))
+        rastertemp <- stack(raster(raoqe, template=input),raster(shannond, template=raster))
     } else if(shannon==FALSE) {
         rastertemp <- raster(raoqe, template=rasterm)
     }
@@ -340,8 +353,12 @@ if( is(rasterm,"RasterLayer") ) {
 if( is(rasterm,"RasterLayer") & nc.cores==1) {
     return(rastertemp)
 } else if( !is(rasterm,"RasterLayer") & shannon) {
-    return(list(raoqe,shannond))
+    outl<-list(raoqe,shannond)
+    names(outl)<-c("Rao","Shannon")
+    return(outl)
 } else if( !is(rasterm,"RasterLayer") & shannon==FALSE) {
-    return(list(raoqe))
+    outl<-list(raoqe)
+    names(outl)<-c("Rao")
+    return(outl)
 }
 }
