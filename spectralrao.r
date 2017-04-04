@@ -10,7 +10,7 @@
 ## Latest update: 21th July
 #####################################################
 #Function
-spectralrao<-function(input, distance_m="euclidean", p=NULL, window=9, mode="classic", shannon=FALSE, rescale=FALSE, na.tolerance=0.0, simplify=3, nc.cores=1, cluster.type="MPI",debugging=FALSE) {
+spectralrao<-function(input, distance_m="euclidean", p=NULL, window=9, mode="classic", shannon=FALSE, rescale=FALSE, na.tolerance=0.0, simplify=3, nc.cores=1, cluster.type="MPI", debugging=FALSE) {
 #
 #Load required packages
 #
@@ -116,12 +116,14 @@ if(mode=="classic") {
         hor<-matrix(NA,ncol=dim(rasterm)[2],nrow=w)
         ver<-matrix(NA,ncol=w,nrow=dim(rasterm)[1]+w*2)
         trasterm<-cbind(ver,rbind(hor,rasterm_1,hor),ver)
-#
+        rm(rasterm_1,hor,ver)
+#       
 ##Derive distance matrix
 #
         classes<-levels(as.factor(rasterm))
         d1<-dist(classes,method=distance_m)
-#
+        rm(classes)
+#       
 ##Create cluster object with given number of slaves
 #
         plr<<-TRUE
@@ -167,17 +169,10 @@ if(mode=="classic") {
             }
             vout<-append(vout,vv)
         }
-        return(vout)
+        return(as.integer(vout*100^simplify)) #addedd bit of code
+        gc()
     }
-    message(paste(isfloat))
-    if(isfloat) {
-    raoqe<-do.call(cbind,raop)/mfactor
-    if(debugging){
-        message("check_2.5")
-    }
-    } else {
-        raoqe<-do.call(cbind,raop)
-    }# End classic RaoQ - parallelized
+        raoqe<-do.call(cbind,raop) # End classic RaoQ - parallelized
 #
 ##If classic RaoQ - sequential
 #
@@ -389,6 +384,12 @@ if( shannon ) {
     names(outl)<-c("Rao","Shannon")
     return(outl)
 } else if( !shannon & mode=="classic") {
+    if(isfloat) {
+    raoqe<-do.call(cbind,raop)/mfactor
+    if(debugging){
+        message("check_2.5")
+    }
+}
     outl<-list(raoqe)
     names(outl)<-c("Rao")
     return(outl)
