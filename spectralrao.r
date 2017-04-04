@@ -34,32 +34,50 @@ spectralrao<-function(input, distance_m="euclidean", p=NULL, window=9, mode="cla
     if( is(input[[1]],"RasterLayer") ) {
         if( mode=="classic" ){
 #If the data is float number transform it in integer
+            isfloat<-FALSE
             if( !is.integer(getValues(rasterm)) ){
                 isfloat<-TRUE
                 mfactor<-100^simplify
+                rasterm<-apply(as.matrix(rasterm), 1:2, function(y) round(y,simplify))
                 rasterm<-apply(as.matrix(rasterm*mfactor), 1:2, function(x) as.integer(x))
-                message("Converting in a integer matrix...")
+                message("Converting in an integer matrix...")
             }else{
                 rasterm<-as.matrix(rasterm)
             }
             message("RasterLayer ok: \nRao and Shannon output matrices will be returned")
-        }else if(mode=="multidimension" & shannon==FALSE){
-            message(("RasterLayer ok: \nA raster object with multimension RaoQ will be returned"))
-        }else if(mode=="multidimension" & shannon==TRUE){
+        }else if(mode=="multidimension" & !shannon){
+            message(("####\nRasterLayer ok: \nA raster object with multimension RaoQ will be returned\n####"))
+        }else if(mode=="multidimension" & shannon){
             stop(("Matrix check failed: \nMultidimension and Shannon not compatible, set shannon=FALSE"))
         }
     }else if( is(input,"matrix") | is(input,"list") ) {
-        if(mode=="classic"){
+         if( mode=="classic" ){
+#If the data is float number transform it in integer
+            isfloat<-FALSE
+            if( !is.integer(rasterm) ){
+                isfloat<-TRUE
+                mfactor<-100^simplify
+                rasterm<-apply(as.matrix(rasterm), 1:2, function(y) round(y,simplify))
+                rasterm<-apply(as.matrix(rasterm*mfactor), 1:2, function(x) as.integer(x))
+                message("Converting in an integer matrix...")
+            }else{
+                rasterm<-as.matrix(rasterm)
+            }
+        }
+        if(mode=="classic" & shannon){
             message("Matrix check ok: \nRao and Shannon output matrices will be returned")
-        }else if(mode=="multidimension" & shannon==FALSE){
+        }else if(mode=="classic" & !shannon){
+            message("Matrix check ok: \nRao output matrix will be returned")
+        }else if(mode=="multidimension" & !shannon){
             message(("Matrix check ok: \nA matrix with multimension RaoQ will be returned"))
-        }else if(mode=="multidimension" & shannon==TRUE){
+        }else if(mode=="multidimension" & shannon){
             stop("Matrix check failed: \nMultidimension and Shannon not compatible, set shannon=FALSE")
-        }else{stop("Matrix check failed: \nNot a valid input, please provide a matrix, list or RasterLayer object")
+        }else{stop("Matrix check failed: \nNot a valid input | method | distance, please check all these options")
     }
 }
 if(nc.cores>1) {
-    message("################### Starting parallel calculation ##########################")
+    message("
+    ###################### Starting parallel calculation ##########################")
 }
 #
 ##Derive operational moving window
@@ -74,10 +92,11 @@ raoqe<-matrix(rep(NA,dim(rasterm)[1]*dim(rasterm)[2]),nrow=dim(rasterm)[1],ncol=
 if(shannon){
     shannond<-matrix(rep(NA,dim(rasterm)[1]*dim(rasterm)[2]),nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
 }
+
+if(mode=="classic") {
 #
 #If classic RaoQ - parallelized
 #
-if(mode=="classic") {
     if(nc.cores>1) {
 #
 ##required
@@ -112,6 +131,7 @@ if(mode=="classic") {
             cls <- makeMPIcluster(nc.cores,outfile="",useXDR=FALSE,methods=FALSE,output="")
         }
         registerDoSNOW(cls)
+        on.exit(stopCluster(cls)) # Close the clusters
         gc()
     #
     ##Start the parallelized loop over iter
@@ -148,20 +168,20 @@ if(mode=="classic") {
             vout<-append(vout,vv)
         }
         return(vout)
-    } # End of for loop 
-    if(isfloat){
-    raoqe<-do.call(cbind,raop)/mfactor
-    }else{
-        raoqe<-do.call(cbind,raop)
     }
-    return(raoqe)
-    stopCluster(cls) # Close the cluster
-} # End classic RaoQ - parallelized
-#----------------------------------------------------#
+    message(paste(isfloat))
+    if(isfloat) {
+    raoqe<-do.call(cbind,raop)/mfactor
+    if(debugging){
+        message("check_2.5")
+    }
+    } else {
+        raoqe<-do.call(cbind,raop)
+    }# End classic RaoQ - parallelized
 #
-#If classic RaoQ - sequential
+##If classic RaoQ - sequential
 #
-else if(nc.cores==1) {
+    } else if(nc.cores==1) {
 #Reshape values
     values<-as.numeric(as.factor(rasterm))
     rasterm_1<-matrix(data=values,nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
@@ -187,7 +207,7 @@ else if(nc.cores==1) {
                 }
                 tw_labels<-names(tw)
                 tw_values<-as.vector(tw)
-                if(length(tw_values) == 2) {
+                if(length(tw_values) <= 2) {
                     raoqe[rw-w,cl-w]<-NA
                 } else {
                     p <- tw_values/sum(tw_values)
@@ -195,7 +215,7 @@ else if(nc.cores==1) {
                     p1[upper.tri(p1)] <- c(combn(p,m=2,FUN=prod))
                     p1[lower.tri(p1)] <- c(combn(p,m=2,FUN=prod))
                     d2 <- unname(as.matrix(d1)[as.numeric(tw_labels),as.numeric(tw_labels)])
-                     if(isint) {
+                     if(isfloat) {
                         raoqe[rw-w,cl-w]<-sum(p1*d2)/mfactor
                     } else {
                         raoqe[rw-w,cl-w]<-sum(p1*d2)
@@ -349,26 +369,33 @@ if(shannon){
 #
 #Return the output
 #
-if( is(rasterm,"RasterLayer") ) {
-    if( shannon ) {
-#Rasterize the matrices if matrix==raster
-        rastertemp <- stack(raster(raoqe, template=input),raster(shannond, template=raster))
-    } else if(shannon==FALSE) {
-        rastertemp <- raster(raoqe, template=rasterm)
-    }
-}
+# if( is(rasterm,"RasterLayer") ) {
+#     if( shannon ) {
+# #Rasterize the matrices if matrix==raster
+#         rastertemp <- stack(raster(raoqe, template=input),raster(shannond, template=raster))
+#     } else if(shannon==FALSE) {
+#         rastertemp <- raster(raoqe, template=rasterm)
+#     }
+# }
 #
 #Return multiple outputs
 #
-if( is(rasterm,"RasterLayer") & nc.cores==1) {
-    return(rastertemp)
-} else if( !is(rasterm,"RasterLayer") & shannon) {
+if(debugging){
+        message("check_2")
+    }
+
+if( shannon ) {
     outl<-list(raoqe,shannond)
     names(outl)<-c("Rao","Shannon")
     return(outl)
-} else if( !is(rasterm,"RasterLayer") & shannon==FALSE) {
+} else if( !shannon & mode=="classic") {
     outl<-list(raoqe)
     names(outl)<-c("Rao")
     return(outl)
+} else if( !shannon & mode=="multidimension") {
+    outl<-list(raoqe)
+    names(outl)<-c("Multidimension_Rao")
+    return(outl)
 }
+
 }
