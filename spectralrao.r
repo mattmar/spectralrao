@@ -164,7 +164,7 @@ if(mode=="classic") {
                     p1[upper.tri(p1)] <- c(combn(p,m=2,FUN=prod))
                     p1[lower.tri(p1)] <- c(combn(p,m=2,FUN=prod))
                     d2 <- unname(as.matrix(d1)[as.numeric(tw_labels),as.numeric(tw_labels)])
-                    vv<-sum(p1*d2)
+                    vv <- sum(p1*d2)
                 }
             }
             vout<-append(vout,vv)
@@ -384,8 +384,8 @@ if( shannon ) {
     names(outl)<-c("Rao","Shannon")
     return(outl)
 } else if( !shannon & mode=="classic") {
-    if(isfloat) {
-    raoqe<-do.call(cbind,raop)/mfactor
+    if(isfloat & nc.cores>1) {
+    raoqe<-do.call(cbind,raop)/mfactor/mfactor
     if(debugging){
         message("check_2.5")
     }
