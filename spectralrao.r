@@ -16,6 +16,10 @@ spectralrao<-function(input, distance_m="euclidean", p=NULL, window=9, mode="cla
 #
     require(raster)
 #
+##Define function to check if a number is an integer
+#
+is.wholenumber <- function(x, tol = .Machine$double.eps^0.5)  abs(x - round(x)) < tol
+#
 #Initial checks
 #
     if( !(is(input,"matrix") | is(input,"SpatialGridDataFrame") | is(input,"RasterLayer") | is(input,"list")) ) {
@@ -35,12 +39,16 @@ spectralrao<-function(input, distance_m="euclidean", p=NULL, window=9, mode="cla
         if( mode=="classic" ){
 #If the data is float number transform it in integer
             isfloat<-FALSE
-            if( !is.integer(getValues(rasterm)) ){
+            if( !is.wholenumber(rasterm@data@min) ){
+                message("Converting input data in an integer matrix...")
                 isfloat<-TRUE
                 mfactor<-100^simplify
-                rasterm<-apply(as.matrix(rasterm), 1:2, function(y) round(y,simplify))
-                rasterm<-apply(as.matrix(rasterm*mfactor), 1:2, function(x) as.integer(x))
-                message("Converting in an integer matrix...")
+                rasterm<-getValues(rasterm)*mfactor
+                gc()
+                rasterm<-as.integer(rasterm)
+                gc()
+                rasterm<-matrix(rasterm,nrow(input),ncol(input))
+                gc()
             }else{
                 rasterm<-as.matrix(rasterm)
             }
@@ -61,7 +69,7 @@ spectralrao<-function(input, distance_m="euclidean", p=NULL, window=9, mode="cla
                 rasterm<-apply(as.matrix(rasterm*mfactor), 1:2, function(x) as.integer(x))
                 message("Converting in an integer matrix...")
             }else{
-                rasterm<-as.matrix(rasterm)
+                rasterm<-t(as.matrix(rasterm))
             }
         }
         if(mode=="classic" & shannon){
@@ -77,18 +85,22 @@ spectralrao<-function(input, distance_m="euclidean", p=NULL, window=9, mode="cla
 }
 if(nc.cores>1) {
     message("
-    ###################### Starting parallel calculation ##########################")
+    ##################### Starting parallel calculation #######################")
 }
 #
 ##Derive operational moving window
 #
 if( window%%2==1 ){
     w <- (window-1)/2
-} else {stop("Moving window size must be odd")}
+} else {
+    stop("Moving window size must be odd!")
+}
 #
 ##Output matrices preparation
 #
-raoqe<-matrix(rep(NA,dim(rasterm)[1]*dim(rasterm)[2]),nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
+if(nc.cores==1) {
+    raoqe<-matrix(rep(NA,dim(rasterm)[1]*dim(rasterm)[2]),nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
+}
 if(shannon){
     shannond<-matrix(rep(NA,dim(rasterm)[1]*dim(rasterm)[2]),nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
 }
@@ -108,21 +120,22 @@ if(mode=="classic") {
 ##Reshape values
 #
         values<-as.integer(as.factor(rasterm))
+        gc()
         if(debugging){cat("check_1")}
         rasterm_1<-matrix(data=values,nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
+        gc()
 #
 ##Add fake columns and rows for moving window
 #
         hor<-matrix(NA,ncol=dim(rasterm)[2],nrow=w)
         ver<-matrix(NA,ncol=w,nrow=dim(rasterm)[1]+w*2)
         trasterm<-cbind(ver,rbind(hor,rasterm_1,hor),ver)
-        rm(rasterm_1,hor,ver)
+        rm(rasterm_1,hor,ver,values); gc()
 #       
 ##Derive distance matrix
 #
-        classes<-levels(as.factor(rasterm))
-        d1<-dist(classes,method=distance_m)
-        rm(classes)
+        d1<-dist(levels(as.factor(rasterm)),method=distance_m)
+        gc()
 #       
 ##Create cluster object with given number of slaves
 #
@@ -133,31 +146,31 @@ if(mode=="classic") {
             cls <- makeMPIcluster(nc.cores,outfile="",useXDR=FALSE,methods=FALSE,output="")
         }
         registerDoSNOW(cls)
-        on.exit(stopCluster(cls)) # Close the clusters
+        on.exit(stopCluster(cls)) # Close the clusters on exit
         gc()
     #
     ##Start the parallelized loop over iter
     #
         raop <- foreach(cl=(1+w):(dim(rasterm)[2]+w)) %dopar% {
            if(debugging) {
-            cat(cl)
+            cat(rw)
         }
         vout<-c()
         for(rw in (1+w):(dim(rasterm)[1]+w)) {
             if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2-((window^2)*na.tolerance) ) {
-                vv<-raoqe[rw-w,cl-w]
+                vv<-NA
             } else {
                 tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]),maxsum=10000)
                 if( "NA's"%in%names(tw) ) {
                     tw<-tw[-length(tw)]
                 }
-                if(debugging) {
+                if( debugging ) {
                     message("Working on coords ",rw ,",",cl,". classes length: ",length(tw),". window size=",window)
                 }
                 tw_labels<-names(tw)
                 tw_values<-as.vector(tw)
-                if(length(tw_values) <= 2) {
-                    vv<-raoqe[rw-w,cl-w]
+                if( length(tw_values) <=2 ) {
+                    vv<-NA
                 } else {
                     p <- tw_values/sum(tw_values)
                     p1 <- diag(0,length(tw_values))
@@ -169,7 +182,7 @@ if(mode=="classic") {
             }
             vout<-append(vout,vv)
         }
-        return(as.integer(vout*100^simplify)) #addedd bit of code
+        return(vout) #addedd bit of code
         gc()
     }
         raoqe<-do.call(cbind,raop) # End classic RaoQ - parallelized
@@ -385,7 +398,7 @@ if( shannon ) {
     return(outl)
 } else if( !shannon & mode=="classic") {
     if(isfloat & nc.cores>1) {
-    raoqe<-do.call(cbind,raop)/mfactor/mfactor
+    raoqe<-do.call(cbind,raop)/mfactor 
     if(debugging){
         message("check_2.5")
     }
