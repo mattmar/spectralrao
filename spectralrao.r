@@ -35,11 +35,12 @@ is.wholenumber <- function(x, tol = .Machine$double.eps^0.5)  abs(x - round(x)) 
         rasterm<-input[[1]]
     }
 #Deal with matrices and RasterLayer in a different way
+    #if data is a raster layer
     if( is(input[[1]],"RasterLayer") ) {
         if( mode=="classic" ){
 #If the data is float number transform it in integer
             isfloat<-FALSE
-            if( !is.wholenumber(rasterm@data@min) ){
+            if( !is.wholenumber(rasterm@data@min) | !is.wholenumber(rasterm@data@max) | is.infinite(rasterm@data@min) ){
                 message("Converting input data in an integer matrix...")
                 isfloat<-TRUE
                 mfactor<-100^simplify
@@ -47,7 +48,7 @@ is.wholenumber <- function(x, tol = .Machine$double.eps^0.5)  abs(x - round(x)) 
                 gc()
                 rasterm<-as.integer(rasterm)
                 gc()
-                rasterm<-matrix(rasterm,nrow(input),ncol(input))
+                rasterm<-matrix(rasterm,nrow(input),ncol(input),byrow=TRUE)
                 gc()
             }else{
                 rasterm<-as.matrix(rasterm)
@@ -58,18 +59,20 @@ is.wholenumber <- function(x, tol = .Machine$double.eps^0.5)  abs(x - round(x)) 
         }else if(mode=="multidimension" & shannon){
             stop(("Matrix check failed: \nMultidimension and Shannon not compatible, set shannon=FALSE"))
         }
+    #if data is a a matrix or a list
     }else if( is(input,"matrix") | is(input,"list") ) {
          if( mode=="classic" ){
 #If the data is float number transform it in integer
             isfloat<-FALSE
-            if( !is.integer(rasterm) ){
+            if( !is.wholenumber(rasterm@data@min) | !is.wholenumber(rasterm@data@max) | is.infinite(rasterm@data@min) ){
+                message("Converting input data in an integer matrix...")
                 isfloat<-TRUE
                 mfactor<-100^simplify
-                rasterm<-apply(as.matrix(rasterm), 1:2, function(y) round(y,simplify))
-                rasterm<-apply(as.matrix(rasterm*mfactor), 1:2, function(x) as.integer(x))
-                message("Converting in an integer matrix...")
+                rasterm<-as.integer(rasterm*mfactor)
+                rasterm<-matrix(rasterm,nrow(input),ncol(input),byrow=TRUE)
+                gc()
             }else{
-                rasterm<-t(as.matrix(rasterm))
+                rasterm<-as.matrix(rasterm)
             }
         }
         if(mode=="classic" & shannon){
@@ -116,26 +119,31 @@ if(mode=="classic") {
         require(foreach)
         require(doSNOW)
         require(Rmpi)
+        require(parallel)
 #
 ##Reshape values
 #
-        values<-as.integer(as.factor(rasterm))
-        gc()
-        if(debugging){cat("check_1")}
-        rasterm_1<-matrix(data=values,nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
-        gc()
+    values<-as.numeric(as.factor(rasterm))
+    rasterm_1<-matrix(data=values,nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
 #
 ##Add fake columns and rows for moving window
 #
         hor<-matrix(NA,ncol=dim(rasterm)[2],nrow=w)
         ver<-matrix(NA,ncol=w,nrow=dim(rasterm)[1]+w*2)
         trasterm<-cbind(ver,rbind(hor,rasterm_1,hor),ver)
-        rm(rasterm_1,hor,ver,values); gc()
+        rm(hor,ver,rasterm_1,values); gc()
+        if(debugging){cat("check_1")}
 #       
 ##Derive distance matrix
 #
         d1<-dist(levels(as.factor(rasterm)),method=distance_m)
         gc()
+#
+##Export variables in the global environment
+#
+        if(isfloat) {
+            sapply(c("mfactor"), function(x) {assign(x,get(x),envir= .GlobalEnv)})
+        }
 #       
 ##Create cluster object with given number of slaves
 #
@@ -146,6 +154,10 @@ if(mode=="classic") {
             cls <- makeMPIcluster(nc.cores,outfile="",useXDR=FALSE,methods=FALSE,output="")
         }
         registerDoSNOW(cls)
+        clusterCall(cl=cls, function() library("parallel"))
+                if(isfloat) {
+                    parallel::clusterExport(cl=cls, varlist=c("mfactor"))
+                }
         on.exit(stopCluster(cls)) # Close the clusters on exit
         gc()
     #
@@ -153,39 +165,40 @@ if(mode=="classic") {
     #
         raop <- foreach(cl=(1+w):(dim(rasterm)[2]+w)) %dopar% {
            if(debugging) {
-            cat(rw)
+            cat(paste(cl))
         }
-        vout<-c()
-        for(rw in (1+w):(dim(rasterm)[1]+w)) {
+        raout <- sapply((1+w):(dim(rasterm)[1]+w), function(rw) {
             if( length(!which(!trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]%in%NA)) < window^2-((window^2)*na.tolerance) ) {
                 vv<-NA
-            } else {
+                return(vv)
+            } 
+            else {
                 tw<-summary(as.factor(trasterm[c(rw-w):c(rw+w),c(cl-w):c(cl+w)]),maxsum=10000)
                 if( "NA's"%in%names(tw) ) {
                     tw<-tw[-length(tw)]
                 }
                 if( debugging ) {
-                    message("Working on coords ",rw ,",",cl,". classes length: ",length(tw),". window size=",window)
+                    message("Working on coords ",rw,",",cl,". classes length: ",length(tw),". window size=",window)
                 }
                 tw_labels<-names(tw)
                 tw_values<-as.vector(tw)
                 if( length(tw_values) <=2 ) {
                     vv<-NA
-                } else {
+                    return(vv)
+                }
+                else {
                     p <- tw_values/sum(tw_values)
                     p1 <- diag(0,length(tw_values))
                     p1[upper.tri(p1)] <- c(combn(p,m=2,FUN=prod))
                     p1[lower.tri(p1)] <- c(combn(p,m=2,FUN=prod))
                     d2 <- unname(as.matrix(d1)[as.numeric(tw_labels),as.numeric(tw_labels)])
                     vv <- sum(p1*d2)
+                    return(vv)
                 }
             }
-            vout<-append(vout,vv)
-        }
-        return(vout) #addedd bit of code
-        gc()
-    }
-        raoqe<-do.call(cbind,raop) # End classic RaoQ - parallelized
+        })
+        return(raout)
+    } # End classic RaoQ - parallelized
 #
 ##If classic RaoQ - sequential
 #
@@ -375,17 +388,6 @@ if(shannon){
 }
 #----------------------------------------------------#
 #
-#Return the output
-#
-# if( is(rasterm,"RasterLayer") ) {
-#     if( shannon ) {
-# #Rasterize the matrices if matrix==raster
-#         rastertemp <- stack(raster(raoqe, template=input),raster(shannond, template=raster))
-#     } else if(shannon==FALSE) {
-#         rastertemp <- raster(raoqe, template=rasterm)
-#     }
-# }
-#
 #Return multiple outputs
 #
 if(debugging){
@@ -398,12 +400,13 @@ if( shannon ) {
     return(outl)
 } else if( !shannon & mode=="classic") {
     if(isfloat & nc.cores>1) {
-    raoqe<-do.call(cbind,raop)/mfactor 
+    #return(raop)
+    return(do.call(cbind,raop)/mfactor)
     if(debugging){
         message("check_2.5")
     }
 }
-    outl<-list(raoqe)
+    outl<-list(do.call(cbind,raop))
     names(outl)<-c("Rao")
     return(outl)
 } else if( !shannon & mode=="multidimension") {
