@@ -64,7 +64,7 @@ is.wholenumber <- function(x, tol = .Machine$double.eps^0.5)  abs(x - round(x)) 
          if( mode=="classic" ){
 #If the data is float number transform it in integer
             isfloat<-FALSE
-            if( !is.wholenumber(rasterm@data@min) | !is.wholenumber(rasterm@data@max) | is.infinite(rasterm@data@min) ){
+            if( !is.integer(rasterm) ){
                 message("Converting input data in an integer matrix...")
                 isfloat<-TRUE
                 mfactor<-100^simplify
@@ -405,10 +405,19 @@ if( shannon ) {
     if(debugging){
         message("check_2.5")
     }
-}
+} else if( !isfloat & nc.cores>1) {
     outl<-list(do.call(cbind,raop))
     names(outl)<-c("Rao")
     return(outl)
+} else if(isfloat & nc.cores==1) {
+    outl<-list(do.call(cbind,raoqe))/mfactor
+    names(outl)<-c("Rao")
+    return(outl)    
+} else if(!isfloat & nc.cores>1) {
+    outl<-list(do.call(cbind,raoqe))
+    names(outl)<-c("Rao")
+    return(outl)
+}
 } else if( !shannon & mode=="multidimension") {
     outl<-list(raoqe)
     names(outl)<-c("Multidimension_Rao")
