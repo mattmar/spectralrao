@@ -7,7 +7,7 @@
 ## distance 0. If the chosen distance ranges between
 ## 0 and 1, Rao's Max = 1-1/S (Simpson Diversity,
 ## where S is pixel classes).
-## Latest update: 21th July
+## Latest update: 26th May 2017
 #####################################################
 #Function
 spectralrao<-function(input, distance_m="euclidean", p=NULL, window=9, mode="classic", shannon=FALSE, rescale=FALSE, na.tolerance=0.0, simplify=3, nc.cores=1, cluster.type="MPI", debugging=FALSE) {
@@ -53,11 +53,17 @@ is.wholenumber <- function(x, tol = .Machine$double.eps^0.5)  abs(x - round(x)) 
             }else{
                 rasterm<-as.matrix(rasterm)
             }
-            message("RasterLayer ok: \nRao and Shannon output matrices will be returned")
+        }
+#User messages
+        if(mode=="classic" & shannon){
+            message("Matrix check ok: \nRao and Shannon output matrices will be returned")
+        }else if(mode=="classic" & !shannon){
+            message("Matrix check ok: \nRao output matrix will be returned")
         }else if(mode=="multidimension" & !shannon){
-            message(("####\nRasterLayer ok: \nA raster object with multimension RaoQ will be returned\n####"))
+            message(("Matrix check ok: \nA matrix with multimension RaoQ will be returned"))
         }else if(mode=="multidimension" & shannon){
-            stop(("Matrix check failed: \nMultidimension and Shannon not compatible, set shannon=FALSE"))
+            stop("Matrix check failed: \nMultidimension and Shannon not compatible, set shannon=FALSE")
+        }else{stop("Matrix check failed: \nNot a valid input | method | distance, please check all these options")
         }
     #if data is a a matrix or a list
     }else if( is(input,"matrix") | is(input,"list") ) {
@@ -398,7 +404,7 @@ if( shannon ) {
     outl<-list(raoqe,shannond)
     names(outl)<-c("Rao","Shannon")
     return(outl)
-} else if( !shannon & mode=="classic") {
+} else if( !shannon & mode=="classic" ) {
     if(isfloat & nc.cores>1) {
     #return(raop)
     return(do.call(cbind,raop)/mfactor)
@@ -410,7 +416,7 @@ if( shannon ) {
     names(outl)<-c("Rao")
     return(outl)
 } else if(isfloat & nc.cores==1) {
-    outl<-list(do.call(cbind,raoqe))/mfactor
+    outl<-list(raoqe/mfactor)
     names(outl)<-c("Rao")
     return(outl)    
 } else if(!isfloat & nc.cores>1) {

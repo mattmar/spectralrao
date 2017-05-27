@@ -39,7 +39,7 @@ r1<-matrix(rpois(25000,lambda=5),nrow=500,ncol=500)
 system.time(raop<-spectralrao(matrix=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1, nc.cores=8)) #75.669
 system.time(raos<-spectralrao(matrix=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1)) #89.064
 
-###Comprison enhanced [standard legend]
+###Comparison enhanced [standard legend]
 #Color palette
 library('RColorBrewer')
 clp<-brewer.pal(9,"RdYlGn")
