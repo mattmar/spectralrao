@@ -23,21 +23,25 @@ r4 <- t(cbind(rbind(xy1, xy2),rbind(xy3,xy4)))
 r3<-matrix(data=c(-0.5,-0.5,-0.5,-0.5,0.8, -0.5,-0.5,-0.5,-0.5,0.8,0,0,0,0,0,0,0,0.8,0.8,0.8,0,0.5,0.8,0.8,0.5),nrow=5,ncol=5,byrow=F)
 
 ###Run the function on one dimension
-raomatrix<-spectralrao(matrix=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1)
+raomatrix<-spectralrao(input=r1,distance_m="euclidean",window=3,shannon=TRUE,na.tolerance=1)
 
 ###Comparison
+#Color palette
+library('RColorBrewer')
+clp<-brewer.pal(9,"RdYlGn")
+
 png("~/spectralrao_monodimensional.png",width = 300, height = 105,res=300,type = c("cairo"),units="mm",pointsize="15")
 par(mfrow=c(1,3),mar=c(5, 3, 4, 5),family="Arial")
 raster::plot(raster(r2),main="Layer 1 (e.g., (NDVI)")
-raster::plot(raster(raomatrix[[2]]),main="Shannon's H'",legend=F,col=clp_map)
-raster::plot(raster(as.matrix(c(rep(2.1,10),rep(1.9,10)))), legend.only=TRUE,col=clp_map)
-raster::plot(raster(raomatrix[[1]]),main="Univariate Rao's\n (Euclidean distance)",legend=T,col=clp_map)
+raster::plot(raster(raomatrix[[2]]),main="Shannon's H'",legend=F,col=clp)
+raster::plot(raster(as.matrix(c(rep(2.1,10),rep(1.9,10)))), legend.only=TRUE,col=clp)
+raster::plot(raster(raomatrix[[1]]),main="Univariate Rao's\n (Euclidean distance)",legend=T,col=clp)
 dev.off()
 
 ###Check running time for parallelized and sequential functions on one dimension
 r1<-matrix(rpois(25000,lambda=5),nrow=500,ncol=500)
-system.time(raop<-spectralrao(matrix=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1, nc.cores=8)) #75.669
-system.time(raos<-spectralrao(matrix=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1)) #89.064
+system.time(raop<-spectralrao(input=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1, nc.cores=8)) #75.669
+system.time(raos<-spectralrao(input=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1)) #89.064
 
 ###Comparison enhanced [standard legend]
 #Color palette
@@ -69,7 +73,7 @@ ggsave("~/raoshannon.png",dpi=300,height=3,width=9)
 plot(raomatrix[[1]]~raomatrix[[2]],pch=16,col="grey",cex=2,xlab="ShannonD",ylab="RaoQ")
 
 ###Run the function as multidimensional RaoQ
-raomatrix<-spectralrao(matrix=list(r2,r4),window=3,mode="multidimension",distance_m="euclidean",na.tolerance=1,rescale=FALSE)
+raomatrix<-spectralrao(input=list(r2,r4),window=3,mode="multidimension",distance_m="euclidean",na.tolerance=1,rescale=FALSE)
 
 ###Comparison
 png("~/spectralrao_multidimensional.png",width = 300, height = 105,res=300,type = c("cairo"),units="mm",pointsize="15")
@@ -80,12 +84,7 @@ raster::plot(raster(raomatrix[[1]]),main="Multidimensional Rao's Q\n(Euclidean d
 dev.off()
 
 ###Run the function as multidimensional RaoQ and RasterLayer as input
-raomatrix<-spectralrao(matrix=list(ndvi,ndvi+7),window=3,mode="multidimension",shannon=FALSE)
-
-###Plot the output
-raster::plot(raster(raomatrix[[1]]))
-
-###Download NDVI from NASA at 0.1 degrees and derive Rao's and Shannon index
+###Download NDVI from NASA at 0.1 degrees and derive Rao's and Shannon index; NASA likes to change urls, the one below may be outdated
 cd ~
 wget -O example_modis_ndvi_2015.tiff "http://neo.sci.gsfc.nasa.gov/servlet/RenderData?si=1690249&cs=rgb&format=TIFF&width=3600&height=1800"
 
@@ -139,7 +138,7 @@ raster::plot(raos, legend.only=TRUE, axis.args=list(at=seq(0.01,0.4,length.out=5
 dev.off()
 
 
-#Compare multiple distance
+#Compare multiple distance, monodimensional rao
 dst<-c("euclidean","maximum","manhattan","canberra","binary","minkowski")
 
 outl<-list()
@@ -150,3 +149,22 @@ for (d in 1:length(dst)) {
 
 par(mfrow=c(2,3))
 sapply(outl, function(x) {raster::plot(raster(x[[1]]),main=names(x))})
+
+
+#Compare multiple distance, monodimensional rao
+mdst<-c("euclidean","manhattan","canberra","minkowski","mahalanobis")
+
+moutl<-list()
+for (d in 1:length(mdst)) {
+    moutl[[d]] <- spectralrao(list(r2,r4), distance_m=mdst[d],mode="multidimension",window=3, lambda=0.1,shannon=FALSE)
+    names(moutl[[d]]) <- mdst[d]
+}
+
+par(mfrow=c(2,3))
+sapply(moutl, function(x) {raster::plot(raster(x[[1]]),main=names(x))})
+
+
+#Multidimensional with rasterlayer as input
+#raomatrix<-spectralrao(matrix=list(ndvi,ndvi+7),window=3,mode="multidimension",shannon=FALSE)
+###Plot the output
+#raster::plot(raster(raomatrix[[1]]))

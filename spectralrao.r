@@ -10,7 +10,7 @@
 ## Latest update: 26th May 2017
 #####################################################
 #Function
-spectralrao<-function(input, distance_m="euclidean", p=NULL, window=9, mode="classic", shannon=FALSE, rescale=FALSE, na.tolerance=0.0, simplify=3, nc.cores=1, cluster.type="MPI", debugging=FALSE) {
+spectralrao<-function(input, distance_m="euclidean", p=NULL, window=9, mode="classic", lambda=0, shannon=FALSE, rescale=FALSE, na.tolerance=0.0, simplify=3, nc.cores=1, cluster.type="MPI", debugging=FALSE) {
 #
 #Load required packages
 #
@@ -18,14 +18,14 @@ spectralrao<-function(input, distance_m="euclidean", p=NULL, window=9, mode="cla
 #
 ##Define function to check if a number is an integer
 #
-is.wholenumber <- function(x, tol = .Machine$double.eps^0.5)  abs(x - round(x)) < tol
+    is.wholenumber <- function(x, tol = .Machine$double.eps^0.5)  abs(x - round(x)) < tol
 #
 #Initial checks
 #
     if( !(is(input,"matrix") | is(input,"SpatialGridDataFrame") | is(input,"RasterLayer") | is(input,"list")) ) {
         stop("\nNot a valid input object.")
     }
-#Change input input/ces names
+#Change input matrix/ces names
     if( is(input,"SpatialGridDataFrame") ) {
         input <- raster(input)
     }
@@ -64,33 +64,33 @@ is.wholenumber <- function(x, tol = .Machine$double.eps^0.5)  abs(x - round(x)) 
         }else if(mode=="multidimension" & shannon){
             stop("Matrix check failed: \nMultidimension and Shannon not compatible, set shannon=FALSE")
         }else{stop("Matrix check failed: \nNot a valid input | method | distance, please check all these options")
-        }
-    #if data is a a matrix or a list
-    }else if( is(input,"matrix") | is(input,"list") ) {
-         if( mode=="classic" ){
-#If the data is float number transform it in integer
-            isfloat<-FALSE
-            if( !is.integer(rasterm) ){
-                message("Converting input data in an integer matrix...")
-                isfloat<-TRUE
-                mfactor<-100^simplify
-                rasterm<-as.integer(rasterm*mfactor)
-                rasterm<-matrix(rasterm,nrow(input),ncol(input),byrow=TRUE)
-                gc()
-            }else{
-                rasterm<-as.matrix(rasterm)
-            }
-        }
-        if(mode=="classic" & shannon){
-            message("Matrix check ok: \nRao and Shannon output matrices will be returned")
-        }else if(mode=="classic" & !shannon){
-            message("Matrix check ok: \nRao output matrix will be returned")
-        }else if(mode=="multidimension" & !shannon){
-            message(("Matrix check ok: \nA matrix with multimension RaoQ will be returned"))
-        }else if(mode=="multidimension" & shannon){
-            stop("Matrix check failed: \nMultidimension and Shannon not compatible, set shannon=FALSE")
-        }else{stop("Matrix check failed: \nNot a valid input | method | distance, please check all these options")
     }
+    #if data is a a matrix or a list
+}else if( is(input,"matrix") | is(input,"list") ) {
+ if( mode=="classic" ){
+#If the data is float number transform it in integer
+    isfloat<-FALSE
+    if( !is.integer(rasterm) ){
+        message("Converting input data in an integer matrix...")
+        isfloat<-TRUE
+        mfactor<-100^simplify
+        rasterm<-as.integer(rasterm*mfactor)
+        rasterm<-matrix(rasterm,nrow(input),ncol(input),byrow=TRUE)
+        gc()
+    }else{
+        rasterm<-as.matrix(rasterm)
+    }
+}
+if(mode=="classic" & shannon){
+    message("Matrix check ok: \nRao and Shannon output matrices will be returned")
+}else if(mode=="classic" & !shannon){
+    message("Matrix check ok: \nRao output matrix will be returned")
+}else if(mode=="multidimension" & !shannon){
+    message(("Matrix check ok: \nA matrix with multimension RaoQ will be returned"))
+}else if(mode=="multidimension" & shannon){
+    stop("Matrix check failed: \nMultidimension and Shannon not compatible, set shannon=FALSE")
+}else{stop("Matrix check failed: \nNot a valid input | method | distance, please check all these options")
+}
 }
 if(nc.cores>1) {
     message("
@@ -129,8 +129,8 @@ if(mode=="classic") {
 #
 ##Reshape values
 #
-    values<-as.numeric(as.factor(rasterm))
-    rasterm_1<-matrix(data=values,nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
+        values<-as.numeric(as.factor(rasterm))
+        rasterm_1<-matrix(data=values,nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
 #
 ##Add fake columns and rows for moving window
 #
@@ -161,9 +161,9 @@ if(mode=="classic") {
         }
         registerDoSNOW(cls)
         clusterCall(cl=cls, function() library("parallel"))
-                if(isfloat) {
-                    parallel::clusterExport(cl=cls, varlist=c("mfactor"))
-                }
+        if(isfloat) {
+            parallel::clusterExport(cl=cls, varlist=c("mfactor"))
+        }
         on.exit(stopCluster(cls)) # Close the clusters on exit
         gc()
     #
@@ -208,7 +208,7 @@ if(mode=="classic") {
 #
 ##If classic RaoQ - sequential
 #
-    } else if(nc.cores==1) {
+} else if(nc.cores==1) {
 #Reshape values
     values<-as.numeric(as.factor(rasterm))
     rasterm_1<-matrix(data=values,nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
@@ -242,7 +242,7 @@ if(mode=="classic") {
                     p1[upper.tri(p1)] <- c(combn(p,m=2,FUN=prod))
                     p1[lower.tri(p1)] <- c(combn(p,m=2,FUN=prod))
                     d2 <- unname(as.matrix(d1)[as.numeric(tw_labels),as.numeric(tw_labels)])
-                     if(isfloat) {
+                    if(isfloat) {
                         raoqe[rw-w,cl-w]<-sum(p1*d2)/mfactor
                     } else {
                         raoqe[rw-w,cl-w]<-sum(p1*d2)
@@ -269,7 +269,7 @@ if(mode=="classic") {
 #
 ##Check whether the distance is valid or not
 #
-    if( distance_m=="euclidean" | distance_m=="manhattan" | distance_m=="canberra" ) {
+    if( distance_m=="euclidean" | distance_m=="manhattan" | distance_m=="canberra" | distance_m=="minkowski" | distance_m=="mahalanobis" ) {
         #Define the distance functions
         #euclidean
         multieuclidean <- function(x) {
@@ -292,6 +292,32 @@ if(mode=="classic") {
             })
             return(Reduce(`+`,tmp))
         }
+        #minkowski
+        multiminkowski <- function(x) {
+          tmp <- lapply(x, function(y) {
+            abs((y[[1]]-y[[2]])^lambda)
+        })
+          return(Reduce(`+`,tmp)^(1/lambda))
+      }
+       #mahalanobis
+      multimahalanobis <- function(x){
+        tmp <- matrix(unlist(lapply(x,function(y) as.vector(y))),ncol=2)
+        tmp <- tmp[!is.na(tmp[,1]),] 
+        if( length(tmp)==0 | is.null(dim(tmp)) ) {
+            return(NA)
+        } else if(rcond(cov(tmp)) <= 0.001) {
+            return(NA)
+        } else {
+    #return the inverse of the covariance matrix of tmp; aka the precision matrix
+            inverse<-solve(cov(tmp)) 
+            if(debugging){
+                print(inverse)
+            }
+            tmp<-scale(tmp,center=T,scale=F)
+            tmp<-as.numeric(t(tmp[1,])%*%inverse%*%tmp[1,])
+            return(sqrt(tmp))
+        }
+    }
 #
 ##Decide what function to use
 #
@@ -301,9 +327,17 @@ if(mode=="classic") {
             distancef <- get("multimanhattan")
         } else if(distance_m=="canberra") {
             distancef <- get("multicanberra")
+        } else if(distance_m=="minkowski") {
+            if( lambda==0 ) {
+                stop("The Minkowski Distance for lambda = 0 is Infinity; please choose another value for lambda.")
+            } else {
+                distancef <- get("multiminkowski") 
+            }
+        } else if(distance_m=="mahalanobis") {
+            distancef <- get("multimahalanobis")
         }
     } else {
-        stop("Distance function not defined for multidimensional Rao's Q; please chose among euclidean, manhattan or canberra")
+        stop("Distance function not defined for multidimensional Rao's Q; please choose among euclidean, manhattan, canberra, minkowski, mahalanobis!")
     }
 #
 ##Reshape values
@@ -397,8 +431,8 @@ if(shannon){
 #Return multiple outputs
 #
 if(debugging){
-        message("check_2")
-    }
+    message("check_2")
+}
 
 if( shannon ) {
     outl<-list(raoqe,shannond)
@@ -407,23 +441,23 @@ if( shannon ) {
 } else if( !shannon & mode=="classic" ) {
     if(isfloat & nc.cores>1) {
     #return(raop)
-    return(do.call(cbind,raop)/mfactor)
-    if(debugging){
-        message("check_2.5")
+        return(do.call(cbind,raop)/mfactor)
+        if(debugging){
+            message("check_2.5")
+        }
+    } else if( !isfloat & nc.cores>1) {
+        outl<-list(do.call(cbind,raop))
+        names(outl)<-c("Rao")
+        return(outl)
+    } else if(isfloat & nc.cores==1) {
+        outl<-list(raoqe/mfactor)
+        names(outl)<-c("Rao")
+        return(outl)    
+    } else if(!isfloat & nc.cores>1) {
+        outl<-list(do.call(cbind,raoqe))
+        names(outl)<-c("Rao")
+        return(outl)
     }
-} else if( !isfloat & nc.cores>1) {
-    outl<-list(do.call(cbind,raop))
-    names(outl)<-c("Rao")
-    return(outl)
-} else if(isfloat & nc.cores==1) {
-    outl<-list(raoqe/mfactor)
-    names(outl)<-c("Rao")
-    return(outl)    
-} else if(!isfloat & nc.cores>1) {
-    outl<-list(do.call(cbind,raoqe))
-    names(outl)<-c("Rao")
-    return(outl)
-}
 } else if( !shannon & mode=="multidimension") {
     outl<-list(raoqe)
     names(outl)<-c("Multidimension_Rao")
