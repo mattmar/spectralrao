@@ -1,6 +1,16 @@
 # spectralrao(...)
 #Description: Applying Rao's index to remote sensing data'
 
+#For parallel computing in Ubuntu, to be done before calling spectralrao()
+apt-get update
+apt-get upgrade
+apt-get install mpi
+apt-get install libopenmpi-dev
+apt-get install r-cran-rmpi
+
+#For parallel computing in Windows, to be done before calling spectralrao()
+# Please check out this page http://www.stats.uwo.ca/faculty/yu/Rmpi/
+
 ##Example
 ###Random simulated spectral matrix
 set.seed(26)
