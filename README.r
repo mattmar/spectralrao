@@ -8,8 +8,9 @@ apt-get install mpi
 apt-get install libopenmpi-dev
 apt-get install r-cran-rmpi
 
-#For parallel computing in Windows, to be done before calling spectralrao()
+#For parallel computing in MAC|Windows, to be done before calling spectralrao()
 # Please check out this page http://www.stats.uwo.ca/faculty/yu/Rmpi/
+# https://bioinfomagician.wordpress.com/2013/11/18/installing-rmpi-mpi-for-r-on-mac-and-windows/
 
 ##Example
 ###Random simulated spectral matrix
