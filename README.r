@@ -10,6 +10,7 @@ apt-get install r-cran-rmpi
 
 #For parallel computing in Windows, to be done before calling spectralrao()
 # Please check out this page http://www.stats.uwo.ca/faculty/yu/Rmpi/
+# Rmpi spawn function is not supported in Windows
 
 ##Example
 ###Random simulated spectral matrix
@@ -50,8 +51,8 @@ dev.off()
 
 ###Check running time for parallelized and sequential functions on one dimension
 r1<-matrix(rpois(25000,lambda=5),nrow=500,ncol=500)
-system.time(raop<-spectralrao(input=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1, nc.cores=8)) #75.669
-system.time(raos<-spectralrao(input=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1)) #89.064
+system.time(raop<-spectralrao(input=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1, nc.cores=8, cluster.type="SOCK")) #36.566
+system.time(raos<-spectralrao(input=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1)) #146.668
 
 ###Comparison enhanced [standard legend]
 #Color palette
