@@ -52,7 +52,7 @@ dev.off()
 
 ###Check running time for parallelized and sequential functions on one dimension
 r1<-matrix(rpois(25000,lambda=5),nrow=500,ncol=500)
-system.time(raop<-spectralrao(input=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1, nc.cores=8, cluster.type="SOCK")) #36.566
+system.time(raop<-spectralrao(input=r1,distance_m="euclidean",window=3,shannon=T,na.tolerance=1, nc.cores=2, cluster.type="SOCK")) #36.566
 system.time(raos<-spectralrao(input=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1)) #146.668
 
 ###Comparison enhanced [standard legend]
@@ -174,6 +174,24 @@ for (d in 1:length(mdst)) {
 
 par(mfrow=c(2,3))
 sapply(moutl, function(x) {raster::plot(raster(x[[1]]),main=names(x))})
+
+#Check out how na.tolerance parameter works
+set.seed(27)
+rna<-matrix(c(rpois(2500,lambda=5),rep(NA,525)),nrow=55,ncol=55)
+
+###Run the function with different na.tolerance
+raona<-spectralrao(input=rna,distance_m="euclidean",window=9,shannon=FALSE,na.tolerance=0)
+ranona<-spectralrao(input=rna,distance_m="euclidean",window=9,shannon=FALSE,na.tolerance=1)
+
+###Comparison
+#Color palette
+
+png("~/spectralrao_monodimensional.png",width = 300, height = 105,res=300,type = c("cairo"),units="mm",pointsize="15")
+par(mfrow=c(1,3),family="Arial")
+raster::plot(raster(rna),main="Layer 1 (e.g., (NDVI)")
+raster::plot(raster(raona[[1]]),main="Rao na.tolerance=0'",legend=F)
+raster::plot(raster(ranona[[1]]),main="Rao na.tolerance=1'",legend=F)
+dev.off()
 
 
 #Multidimensional with rasterlayer as input

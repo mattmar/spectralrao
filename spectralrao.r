@@ -38,8 +38,11 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
     } else if( is(input,"list") ) {
         rasterm<-input[[1]]
     }
-        #Deal with matrices and RasterLayer in a different way
-            #if data is a raster layer
+    if(na.tolerance>1){
+        stop("na.tolerance must be in the [0-1] interval. Exiting...")
+    }
+    #Deal with matrices and RasterLayer in a different way
+    #if data is a raster layer
     if( is(input[[1]],"RasterLayer") ) {
         if( mode=="classic" ){
         #If the data is float number transform it in integer
@@ -71,7 +74,7 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
     }
             #if data is a a matrix or a list
 }else if( is(input,"matrix") | is(input,"list") ) {
- if( mode=="classic" ){
+   if( mode=="classic" ){
         #If the data is float number transform it in integer
     isfloat<-FALSE
     if( !is.integer(rasterm) ){
@@ -182,7 +185,7 @@ if(mode=="classic") {
         progress <- function(n) setTxtProgressBar(pb, n)
         opts <- list(progress = progress)
         raop <- foreach(cl=(1+w):(dim(rasterm)[2]+w),.options.snow = opts,.verbose = F) %dopar% {
-           if(debugging) {
+         if(debugging) {
             cat(paste(cl))
         }
         raout <- sapply((1+w):(dim(rasterm)[1]+w), function(rw) {
@@ -217,8 +220,6 @@ if(mode=="classic") {
         })
         return(raout)
     } # End classic RaoQ - parallelized
-    raoqe<-raop
-    close(pb)
         #
         ##If classic RaoQ - sequential
         #
@@ -456,9 +457,15 @@ if(debugging){
 }
 
 if( shannon ) {
-    outl<-list(raoqe,shannond)
-    names(outl)<-c("Rao","Shannon")
-    return(outl)
+    if(nc.cores>1) {
+        outl<-list(do.call(cbind,raop),shannond)
+        names(outl)<-c("Rao","Shannon")
+        return(outl)
+    } else if(nc.cores==1){ 
+        outl<-list(raoqe,shannond)
+        names(outl)<-c("Rao","Shannon")
+        return(outl)
+    }
 } else if( !shannon & mode=="classic" ) {
     if(isfloat & nc.cores>1) {
             #return(raop)
@@ -474,12 +481,16 @@ if( shannon ) {
         outl<-list(raoqe/mfactor)
         names(outl)<-c("Rao")
         return(outl)    
+    } else if(!isfloat & nc.cores==1) {
+        outl<-list(raoqe)
+        names(outl)<-c("Rao")
+        return(outl)    
     } else if(!isfloat & nc.cores>1) {
         outl<-list(do.call(cbind,raoqe))
         names(outl)<-c("Rao")
         return(outl)
     }
-} else if( !shannon & mode=="multidimension") {
+} else if( !shannon & mode=="multidimension" ) {
     outl<-list(raoqe)
     names(outl)<-c("Multidimension_Rao")
     return(outl)
