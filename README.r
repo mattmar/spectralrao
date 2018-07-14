@@ -184,14 +184,10 @@ raona<-spectralrao(input=rna,distance_m="euclidean",window=9,shannon=FALSE,na.to
 ranona<-spectralrao(input=rna,distance_m="euclidean",window=9,shannon=FALSE,na.tolerance=1)
 
 ###Comparison
-#Color palette
-
-png("~/spectralrao_monodimensional.png",width = 300, height = 105,res=300,type = c("cairo"),units="mm",pointsize="15")
 par(mfrow=c(1,3),family="Arial")
 raster::plot(raster(rna),main="Layer 1 (e.g., (NDVI)")
 raster::plot(raster(raona[[1]]),main="Rao na.tolerance=0'",legend=F)
 raster::plot(raster(ranona[[1]]),main="Rao na.tolerance=1'",legend=F)
-dev.off()
 
 
 #Multidimensional with rasterlayer as input
