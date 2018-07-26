@@ -189,6 +189,18 @@ raster::plot(raster(rna),main="Layer 1 (e.g., (NDVI)")
 raster::plot(raster(raona[[1]]),main="Rao na.tolerance=0'",legend=F)
 raster::plot(raster(ranona[[1]]),main="Rao na.tolerance=1'",legend=F)
 
+##Personalized distance 
+weir_distance <- function(x,y,...) {
+	return(cos(y-x)-sin(y-x))
+}
+
+ds1<-spectralrao(input=r1,distance_m=weir_distance,window=3,shannon=FALSE,na.tolerance=1)
+ds2<-spectralrao(input=r1,distance_m="euclidean",window=3,shannon=FALSE,na.tolerance=1)
+
+###Comparison
+par(mfrow=c(1,2))
+raster::plot(raster(ds1[[1]]),main="Weir_distance")
+raster::plot(raster(ds2[[1]]),main="Euclidean_distance")
 
 #Multidimensional with rasterlayer as input
 #raomatrix<-spectralrao(matrix=list(ndvi,ndvi+7),window=3,mode="multidimension",shannon=FALSE)
