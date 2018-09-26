@@ -59,7 +59,7 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
                 rasterm<-matrix(rasterm,nrow(input),ncol(input),byrow=TRUE)
                 gc()
             }else{
-                rasterm<-as.matrix(rasterm)
+                rasterm<-matrix(getValues(rasterm),ncol=ncol(input),nrow=nrow(input),byrow=T)
             }
         }
 #User messages
