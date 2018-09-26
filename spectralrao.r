@@ -7,7 +7,7 @@
 ## distance 0. If the chosen distance ranges between
 ## 0 and 1, Rao's Max = 1-1/S (Simpson Diversity,
 ## where S is pixel classes).
-## Latest update: 26th July 2018
+## Latest update: 25th September 2018
 ## Find more info and application here: 
 ## 1) https://doi.org/10.1016/j.ecolind.2016.07.039 
 ## 2) https://www.researchgate.net/publication/321095990_Measuring_b-diversity_by_remote_sensing_a_challenge_for_biodiversity_monitoring
@@ -93,13 +93,13 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
         message("Matrix check ok: \nRao and Shannon output matrices will be returned")
     }else if(mode=="classic" & !shannon){
         message("Matrix check ok: \nRao output matrix will be returned")
-    }else if(mode=="multidimension" & !shannon){
-        message(("Matrix check ok: \nA matrix with multimension RaoQ will be returned"))
     }else if(mode=="multidimension" & shannon){
         stop("Matrix check failed: \nMultidimension and Shannon not compatible, set shannon=FALSE")
-    }else{stop("Matrix check failed: \nNot a valid input | method | distance, please check all these options")
+    }else{stop("Matrix check failed: \nNot a valid input | method | distance, please check all these options")}
+}else if(mode=="multidimension" & !shannon){
+    message(("Matrix check ok: \nA matrix with multimension RaoQ will be returned"))
 }
-}
+
 if(nc.cores>1) {
     if(mode=="multidimension"){
         message(
@@ -127,6 +127,9 @@ if(shannon){
     shannond<-matrix(rep(NA,dim(rasterm)[1]*dim(rasterm)[2]),nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
 }
 
+#
+##If mode is classic Rao
+#
 if(mode=="classic") {
 #
 #If classic RaoQ - parallelized
@@ -183,7 +186,7 @@ if(mode=="classic") {
         gc()
 #
 ##Start the parallelized loop over iter
-#
+#*ifelse(shannon==TRUE,2,1)
         pb <- txtProgressBar(min = (1+w), max = dim(rasterm)[2], style = 3)
         progress <- function(n) setTxtProgressBar(pb, n)
         opts <- list(progress = progress)
@@ -223,6 +226,7 @@ if(mode=="classic") {
             })
             return(raout)
         } # End classic RaoQ - parallelized
+        message(("\n\nCalculation of Rao's index complete.\n"))
 #
 ##If classic RaoQ - sequential
 #
@@ -270,15 +274,20 @@ if(mode=="classic") {
                 progress(value=cl, max.value=c((dim(rasterm)[2]+w)+(dim(rasterm)[1]+w))/2, progress.bar = FALSE)
             } 
         } # End of for loop 
+        message(("\nCalculation of Rao's index complete.\n"))
     } # End classic RaoQ - sequential
+
 #----------------------------------------------------#
 } else if(mode=="multidimension"){
+    if(debugging) {
+        message("Into multidimensional clause")
+    }
 #
 #If multimensional RaoQ
 #
 #Check if there are NAs in the matrices
     if ( is(rasterm,"RasterLayer") ){
-        if(any(sapply(lapply(input, function(x) {as.matrix(x)}), is.na)==TRUE))
+        if(any(sapply(lapply(unlist(input),length),is.na)==TRUE))
             message("\n Warning: One or more RasterLayers contain NA which will be threated as 0")
     } else if ( is(rasterm,"matrix") ){
         if(any(sapply(input, is.na)==TRUE) ) {
@@ -362,7 +371,7 @@ if(mode=="classic") {
 #
 ##Reshape values
 #
-    vls<-lapply(input, function(x) {as.matrix(x)})
+    vls<-lapply(input, function(x) {raster::as.matrix(x)})
 #
 ##Rescale and add fake columns and rows for moving w
 #
@@ -379,6 +388,7 @@ if(mode=="classic") {
             cbind(ver,rbind(hor,x,hor),ver)
         })
     }
+
 #
 ##Loop over all the pixels in the matrices
 #
@@ -407,9 +417,10 @@ if(mode=="classic") {
                 raoqe[rw-w,cl-w] <- sum(rep(vout,2) * (1/(window)^4),na.rm=TRUE)
             }
         }
-        progress(value=cl, max.value=c((dim(rasterm)[2]+w)+(dim(rasterm)[1]+w))/2, progress.bar = FALSE)
+        progress(value=cl, max.value=dim(rasterm)[2]+w, progress.bar = FALSE)
     }
-    close(pb)
+    if(exists("pb")) { close(pb) }
+    message(("\nCalculation of Multidimensional Rao's index complete.\n"))
 } # end multimensional RaoQ
 #----------------------------------------------------#
 #
@@ -419,11 +430,8 @@ if(shannon){
 #Reshape values
     values<-as.numeric(as.factor(rasterm))
     rasterm_1<-matrix(data=values,nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
-#pb <- txtProgressBar(min = (1+w), max = (dim(rasterm)[2]+w), style = 3)
-#progress <- function(n) setTxtProgressBar(pb, n)
-#opts <- list(progress = progress)
 #
-##Add fake columns and rows for moving window
+##Add "fake" columns and rows for moving window
 #
     hor<-matrix(NA,ncol=dim(rasterm)[2],nrow=w)
     ver<-matrix(NA,ncol=w,nrow=dim(rasterm)[1]+w*2)
@@ -445,11 +453,11 @@ if(shannon){
                 p<-tw_values/length(tw_values)
                 p_log<-log(p)
                 shannond[rw-w,cl-w]<-(-(sum(p*p_log)))
-#cat(paste(cl,rw,(-(sum(p*p_log)))),"\n")
             }
-#progress(value=cl, max.value=c((dim(rasterm)[2]+w)+(dim(rasterm)[1]+w))/2, progress.bar = FALSE)
         }   
+        svMisc::progress(value=cl, max.value=(c((dim(rasterm)[2]+w)+(dim(rasterm)[1]+w))/2), progress.bar = FALSE)
     } # End ShannonD
+    message(("\nCalculation of Shannon's index is also complete!\n"))
 }
 #----------------------------------------------------#
 #
