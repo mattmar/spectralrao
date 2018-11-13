@@ -15,7 +15,7 @@
 ## Find more info and application here: 
 ## 1) https://doi.org/10.1016/j.ecolind.2016.07.039 
 ## 2) https://besjournals.onlinelibrary.wiley.com/doi/10.1111/2041-210X.12941
-#####################################################
+####################################################
 # Function
 spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="classic", lambda=0, shannon=FALSE, rescale=FALSE, na.tolerance=0.0, simplify=3, nc.cores=1, cluster.type="MPI", debugging=FALSE, ...)
 {
@@ -438,7 +438,7 @@ message("\nCalculation of Multidimensional Rao's index complete.\n")
 #
 ## Shannon
 #
-if( shannon==T ) {
+if( shannon ) {
     message("\nStarting Shannon-Wiener index calculation:\n")
     # Reshape values
     values<-as.numeric(as.factor(rasterm))
@@ -503,7 +503,7 @@ if( shannon ) {
         outl<-list(do.call(cbind,raop))
         names(outl)<-c("Rao")
         return(outl)
-    } else if( sfloat & nc.cores==1 ) {
+    } else if( isfloat & nc.cores==1 ) {
         outl<-list(raoqe/mfactor)
         names(outl)<-c("Rao")
         return(outl)    
