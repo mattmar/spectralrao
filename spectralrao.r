@@ -50,8 +50,8 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
 # If data are raster layers
     if( is(input[[1]],"RasterLayer") ) {
         if( mode=="classic" ){
-            isfloat<-FALSE # If data are float numbers, transform them in integer
-            if( !is.wholenumber(rasterm@data@min) | !is.wholenumber(rasterm@data@max) | is.infinite(rasterm@data@min) ){
+            isfloat<-FALSE # If data are float numbers, transform them in integer, this allows for short computation time on big datasets
+            if( !is.wholenumber(rasterm@data@min) | !is.wholenumber(rasterm@data@max) | is.infinite(rasterm@data@min) |  !is.wholenumber(median(rasterm@data@values)) ){
                 message("Converting input data in an integer matrix...")
                 isfloat<-TRUE
                 mfactor<-100^simplify
@@ -62,7 +62,7 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
                 rasterm<-matrix(rasterm,nrow(input),ncol(input),byrow=TRUE)
                 gc()
             }else{
-                rasterm<-matrix(getValues(rasterm),ncol=ncol(input),nrow=nrow(input),byrow=T)
+                rasterm<-matrix(getValues(rasterm),ncol=ncol(input),nrow=nrow(input),byrow=TRUE)
             }
         }
         #Print user messages
@@ -426,12 +426,12 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
             progress(value=cl, max.value=dim(rasterm)[2]+w, progress.bar = FALSE)
         }
         if(exists("pb")) {
-           close(pb) 
-       }
-   } else{
+         close(pb) 
+         message("\nCalculation of Multidimensional Rao's index complete.\n")
+     }
+ } else{
     message("Something went wrong when trying to calculate Rao's indiex.")
 }  # end of multimensional RaoQ
-message("\nCalculation of Multidimensional Rao's index complete.\n")
 
 #----------------------------------------------------#
 
