@@ -1,6 +1,6 @@
 ######### SPECTRALRAO #############################
 ## Developed by Matteo Marcantonio
-## Latest update: 04th October 2018
+## Latest update: 28th January 2019
 ## -------------------------------------------------
 ## Code to calculate Rao's quadratic entropy on a
 ## numeric matrix, RasterLayer object (or lists)
@@ -50,8 +50,8 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
 # If data are raster layers
     if( is(input[[1]],"RasterLayer") ) {
         if( mode=="classic" ){
-            isfloat<-FALSE # If data are float numbers, transform them in integer, this allows for short computation time on big datasets
-            if( !is.wholenumber(rasterm@data@min) | !is.wholenumber(rasterm@data@max) | is.infinite(rasterm@data@min) |  !is.wholenumber(median(rasterm@data@values)) ){
+            isfloat<-FALSE # If data are float numbers, transform them in integer, this may allow for a shorter computation time on big datasets.
+            if( !is.wholenumber(rasterm@data@min) | !is.wholenumber(rasterm@data@max) | is.infinite(rasterm@data@min) | !is.wholenumber(median(getValues(rasterm))) ){
                 message("Converting input data in an integer matrix...")
                 isfloat<-TRUE
                 mfactor<-100^simplify
@@ -108,7 +108,7 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
     if(nc.cores>1) {
         if(mode=="multidimension"){
             message(
-                "Multi-core is not supported for multidimensional Rao, proceding with 1 core...")
+                "Multi-core is not supported for multidimensional Rao, proceeding with 1 core...")
             nc.cores=1
         }else{
             message("
