@@ -1,6 +1,6 @@
 ######### SPECTRALRAO #############################
 ## Developed by Matteo Marcantonio
-## Latest update: 28th January 2019
+## Latest update: 8th February 2019
 ## -------------------------------------------------
 ## Code to calculate Rao's quadratic entropy on a
 ## numeric matrix, RasterLayer object (or lists)
@@ -56,9 +56,7 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
                 isfloat<-TRUE
                 mfactor<-100^simplify
                 rasterm<-getValues(rasterm)*mfactor
-                gc()
                 rasterm<-as.integer(rasterm)
-                gc()
                 rasterm<-matrix(rasterm,nrow(input),ncol(input),byrow=TRUE)
                 gc()
             }else{
@@ -121,7 +119,7 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
     if( window%%2==1 ){
         w <- (window-1)/2
     } else {
-        stop("Moving window size must be an odd number.")
+        stop("The size of moving window must be an odd number. Exiting...")
     }
 #
 ## Preparation of output matrices
@@ -155,7 +153,7 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
             values<-as.numeric(as.factor(rasterm))
             rasterm_1<-matrix(data=values,nrow=dim(rasterm)[1],ncol=dim(rasterm)[2])
 #
-## Add fake columns and rows for moving window
+## Add additional columns and rows to match moving window
 #
             hor<-matrix(NA,ncol=dim(rasterm)[2],nrow=w)
             ver<-matrix(NA,ncol=w,nrow=dim(rasterm)[1]+w*2)
@@ -165,8 +163,11 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
 #       
 ## Derive distance matrix
 #
-            d1<-proxy::dist(as.numeric(levels(as.factor(rasterm))),method=distance_m)
-            gc()
+            if( is.character( distance_m) | is.function(distance_m) ) {
+                d1<-proxy::dist(as.numeric(levels(as.factor(rasterm))),method=distance_m)
+            } else if( is.matrix(distance_m) | is.data.frame(distance_m) ) {
+                d1<-stats::as.dist(xtabs(distance_m[, 3] ~ distance_m[, 2] + distance_m[, 1]))
+            }
 #
 ## Export variables in the global environment
 #
@@ -212,9 +213,10 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
                         if( debugging ) {
                             message("Working on coords ",rw,",",cl,". classes length: ",length(tw),". window size=",window)
                         }
-                        tw_labels<-names(tw)
-                        tw_values<-as.vector(tw)
-                        if( length(tw_values) <=2 ) {
+                        tw_labels <- names(tw)
+                        tw_values <- as.vector(tw)
+                        #if clause to exclude windows with only 1 category
+                        if( length(tw_values) <2 ) {
                             vv<-NA
                             return(vv)
                         }
@@ -222,7 +224,6 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
                             p <- tw_values/sum(tw_values)
                             p1 <- diag(0,length(tw_values))
                             p1[upper.tri(p1)] <- c(combn(p,m=2,FUN=prod))
-                            p1[lower.tri(p1)] <- c(combn(p,m=2,FUN=prod))
                             d2 <- unname(as.matrix(d1)[as.numeric(tw_labels),as.numeric(tw_labels)])
                             vv <- sum(p1*d2)
                             return(vv)
@@ -245,7 +246,11 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
             trasterm<-cbind(ver,rbind(hor,rasterm_1,hor),ver)
 # Derive distance matrix
             classes<-levels(as.factor(rasterm))
-            d1<-proxy::dist(x=as.numeric(classes),method=distance_m)
+            if( is.character(distance_m) | is.function(distance_m) ) {
+                d1<-proxy::dist(as.numeric(classes),method=distance_m)
+            } else if( is.matrix(distance_m) | is.data.frame(distance_m) ) {
+                d1<-stats::as.dist(xtabs(distance_m[, 3] ~ distance_m[, 2] + distance_m[, 1]))
+            }
 # Loop over each pixel
             for (cl in (1+w):(dim(rasterm)[2]+w)) {
                 for(rw in (1+w):(dim(rasterm)[1]+w)) {
@@ -259,15 +264,15 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
                         if(debugging) {
                             message("Working on coords ",rw ,",",cl,". classes length: ",length(tw),". window size=",window)
                         }
-                        tw_labels<-names(tw)
-                        tw_values<-as.vector(tw)
-                        if(length(tw_values) <= 2) {
+                        tw_labels <- names(tw)
+                        tw_values <- as.vector(tw)
+                        #if clause to exclude windows with only 1 category
+                        if(length(tw_values) < 2) {
                             raoqe[rw-w,cl-w]<-NA
                         } else {
                             p <- tw_values/sum(tw_values)
                             p1 <- diag(0,length(tw_values))
                             p1[upper.tri(p1)] <- c(combn(p,m=2,FUN=prod))
-                            p1[lower.tri(p1)] <- c(combn(p,m=2,FUN=prod))
                             d2 <- unname(as.matrix(d1)[as.numeric(tw_labels),as.numeric(tw_labels)])
                             if(isfloat) {
                                 raoqe[rw-w,cl-w]<-sum(p1*d2)/mfactor
@@ -426,10 +431,10 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
             progress(value=cl, max.value=dim(rasterm)[2]+w, progress.bar = FALSE)
         }
         if(exists("pb")) {
-         close(pb) 
-         message("\nCalculation of Multidimensional Rao's index complete.\n")
-     }
- } else{
+           close(pb) 
+           message("\nCalculation of Multidimensional Rao's index complete.\n")
+       }
+   } else{
     message("Something went wrong when trying to calculate Rao's indiex.")
 }  # end of multimensional RaoQ
 
@@ -494,7 +499,6 @@ if( shannon ) {
     }
 } else if( !shannon & mode=="classic" ) {
     if( isfloat & nc.cores>1 ) {
-#return(raop)
         return(do.call(cbind,raop)/mfactor)
         if(debugging){
             message("#check: return function - classic.")
@@ -504,7 +508,7 @@ if( shannon ) {
         names(outl)<-c("Rao")
         return(outl)
     } else if( isfloat & nc.cores==1 ) {
-        outl<-list(raoqe/mfactor)
+        outl<-list(raoqe)
         names(outl)<-c("Rao")
         return(outl)    
     } else if( !isfloat & nc.cores==1 ) {
