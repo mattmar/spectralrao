@@ -15,10 +15,11 @@ apt-get install r-cran-rmpi
 #https://bioinfomagician.wordpress.com/2013/11/18/installing-rmpi-mpi-for-r-on-mac-and-windows/
 
 ##Minimum example to check that the function is working OK
-###Result should be 0.222 in the central cell
+###Result should be 0.222 (Rao) and 0.9369 (Shannon) in the central cell. 
 a<-matrix(c(-0.5,1,0.5,1,0.5,1,1,1,0.5),ncol=3,nrow=3)
 spectralrao(input=a,window=3,distance_m="euclidean",na.tolerance=0,shannon=FALSE)
 spectralrao(input=a,window=3,distance_m="euclidean",na.tolerance=0,shannon=FALSE,nc.cores=2)
+spectralrao(input=a,window=3,distance_m="euclidean",na.tolerance=0,shannon=TRUE)
 
 ##Less minimum example
 ###Random simulated spectral matrix
@@ -42,7 +43,7 @@ r4 <- t(cbind(rbind(xy1, xy2),rbind(xy3,xy4)))
 r3<-matrix(data=c(-0.5,-0.5,-0.5,-0.5,0.8,-0.5,-0.5,-0.5,-0.5,0.8,0,0,0,0,0,0,0,0.8,0.8,0.8,0,0.5,0.8,0.8,0.5),nrow=5,ncol=5,byrow=F)
 
 ###Run the function on one dimension
-raomatrix<-spectralrao(input=r2,distance_m="euclidean",window=3)
+raomatrix<-spectralrao(input=r2,distance_m="euclidean",window=3,shannon=TRUE)
 
 ###Plot results
 library('RColorBrewer')

@@ -1,6 +1,6 @@
 ######### SPECTRALRAO #############################
 ## Developed by Matteo Marcantonio
-## Latest update: 8th February 2019
+## Latest update: 18th March 2019
 ## -------------------------------------------------
 ## Code to calculate Rao's quadratic entropy on a
 ## numeric matrix, RasterLayer object (or lists)
@@ -466,9 +466,8 @@ if( shannon ) {
                 if( "NA's"%in%names(tw) ) {
                     tw<-tw[-length(tw)]
                 }
-                tw[tw>1]<-1
                 tw_values<-as.vector(tw)
-                p<-tw_values/length(tw_values)
+                p<-tw_values/sum(tw_values)
                 p_log<-log(p)
                 shannond[rw-w,cl-w]<-(-(sum(p*p_log)))
             }
