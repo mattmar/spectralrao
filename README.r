@@ -17,7 +17,9 @@ apt-get install r-cran-rmpi
 ##Minimum example to check that the function is working OK
 ###Result should be 0.222 (Rao) and 0.9369 (Shannon) in the central cell. 
 a<-matrix(c(-0.5,1,0.5,1,0.5,1,1,1,0.5),ncol=3,nrow=3)
-spectralrao(input=a,window=3,distance_m="euclidean",na.tolerance=0,shannon=FALSE)
+spectralrao(input=a,window=3,distance_m="euclidean",na.tolerance=0,shannon=FALSE,method="classic")
+spectralrao(input=a,window=3,distance_m="euclidean",na.tolerance=0,shannon=FALSE,method="multidimension")
+
 spectralrao(input=a,window=3,distance_m="euclidean",na.tolerance=0,shannon=FALSE,nc.cores=2)
 spectralrao(input=a,window=3,distance_m="euclidean",na.tolerance=0,shannon=TRUE)
 
