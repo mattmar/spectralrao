@@ -181,7 +181,7 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
             if( cluster.type=="SOCK" || cluster.type=="FORK" ) {
                 cls <- parallel::makeCluster(nc.cores,type=cluster.type, outfile="",useXDR=FALSE,methods=FALSE,output="")
             } else if( cluster.type=="MPI" ) {
-                cls <- makeMPIcluster(nc.cores,outfile="",useXDR=FALSE,methods=FALSE,output="")
+                cls <- makeCluster(nc.cores,outfile="",useXDR=FALSE,methods=FALSE,output="")
             }
             registerDoSNOW(cls)
             clusterCall(cl=cls, function() library("parallel"))
