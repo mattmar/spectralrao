@@ -51,7 +51,7 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
     if( is(input[[1]],"RasterLayer") ) {
         if( mode=="classic" ){
             isfloat<-FALSE # If data are float numbers, transform them in integer, this may allow for a shorter computation time on big datasets.
-            if( !is.wholenumber(rasterm@data@min) | !is.wholenumber(rasterm@data@max) | is.infinite(rasterm@data@min) | !is.wholenumber(median(getValues(rasterm))) ){
+            if( !is.wholenumber(rasterm@data@min) | !is.wholenumber(rasterm@data@max) | is.infinite(rasterm@data@min) | !is.wholenumber(median(getValues(rasterm),na.rm=T)) ){
                 message("Converting input data in an integer matrix...")
                 isfloat<-TRUE
                 mfactor<-100^simplify
@@ -431,10 +431,10 @@ spectralrao <- function(input, distance_m="euclidean", p=NULL, window=9, mode="c
             progress(value=cl, max.value=dim(rasterm)[2]+w, progress.bar = FALSE)
         }
         if(exists("pb")) {
-           close(pb) 
-           message("\nCalculation of Multidimensional Rao's index complete.\n")
-       }
-   } else{
+         close(pb) 
+         message("\nCalculation of Multidimensional Rao's index complete.\n")
+     }
+ } else{
     message("Something went wrong when trying to calculate Rao's indiex.")
 }  # end of multimensional RaoQ
 
